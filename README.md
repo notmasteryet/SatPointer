@@ -174,7 +174,7 @@ elev:-1.5 az:90.2 daz:54.8 del:30.0 roll:0.8 dip:65.3 B:52.1
 | `daz` | degrees to turn to reach the target; positive = clockwise |
 | `del` | degrees to raise to reach the target |
 | `roll` | rotation around the beam; positive when the right side is down. This is dish skew. |
-| `dip` | magnetic dip angle. It should stay the same however you turn the board. If it changes, the calibration or axis mapping is off. |
+| `dip` | magnetic dip angle. Should hold constant while the device is still; if it moves when it is not being handled, the axis mapping is off. |
 | `B` | field strength in µT. Earth's is 25–65; much more means something magnetic is nearby. |
 
 ## Calibration (do once)
@@ -184,9 +184,24 @@ steel nearby bend the magnetic field. Do it with everything mounted exactly as
 it will be used. Until it is done the display shows **NO CAL** and azimuth
 should not be trusted.
 
-1. **Magnetometer:** send `c`, slowly rotate the board through *every*
-   orientation for 30–60 seconds (including upside down), then send `c` again.
-   The display shows the swing collected on each axis while this runs.
+1. **Magnetometer:** menu → Calibrate (or send `c`), slowly rotate the board
+   through *every* orientation for 30–60 seconds including upside down, then
+   press (or send `c` again). The display shows the swing collected on each
+   axis and the sample count while this runs.
+
+   **Calibrate in the exact final configuration, cables included.** Hard-iron
+   offsets belong to the surrounding metal, so a calibration done with the UART
+   unplugged does not transfer to running with it plugged in.
+
+   The result is graded, not assumed. The device applies the fit back to the
+   samples it kept and measures how constant the corrected field magnitude
+   comes out; Earth's field is locally constant, so any remaining variation is
+   fit error. Under 3% standard deviation counts as calibrated and the status
+   slot reads `ok N%`; above it reads `BAD N%` and azimuth is not trusted.
+
+   |B| is used rather than dip because dip also needs the accelerometer's idea
+   of down, so handling acceleration corrupts it and it cannot tell a bad fit
+   from someone waving the device about.
 2. **North:** point the beam at a known true bearing and send it. `n90`
    means it points east, `n` means north. This also absorbs magnetic
    declination.
@@ -237,9 +252,11 @@ Not yet verified:
   `PIN_ENC_B`.
 - **The OLED rendering.** It enumerates at 0x3C and `display.begin()` succeeds,
   but nobody has confirmed the layout looks right on the panel.
-- **Calibration.** Never run. `dip` currently swings 59°–75° as the board
-  tilts, which is exactly what an uncalibrated magnetometer looks like — it
-  should hold constant. Azimuth is not trustworthy until `c` is done.
+- **Calibration quality.** One calibration has been run and stored, but it was
+  done with the UART unplugged and then measured with it plugged in, and scored
+  badly (|B| varying 11% peak-to-peak). It needs redoing in the final cable
+  configuration. The grading that would have caught this is now in the firmware
+  but has not yet graded a real attempt — only simulated ones.
 
 ## Limitations
 

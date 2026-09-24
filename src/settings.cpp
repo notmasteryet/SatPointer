@@ -2,6 +2,7 @@
 
 #include <EEPROM.h>
 
+#include "calibration.h"
 #include "orientation.h"
 
 // ESP8266 EEPROM is a RAM shadow of a flash sector: it needs begin() and
@@ -23,6 +24,8 @@ void settingsReset() {
     cal.scale[i] = 1.0;
   }
   cal.azTrim = 0;
+  cal.calField = 0;
+  cal.calSpread = 0;
   cal.targetAz = 0;
   cal.targetEl = 0;
   cal.mount = mountDefault();
@@ -49,6 +52,10 @@ void settingsPrint() {
     Serial.print(F(" scale "));
     for (int i = 0; i < 3; i++) { Serial.print(cal.scale[i], 3); Serial.print(' '); }
     Serial.println();
+    Serial.printf("# cal |B| %.1f uT, sd %.2f%%\n", cal.calField, cal.calSpread);
+  } else if (cal.calSpread > 0) {
+    Serial.printf("# calibration POOR: sd %.2f%% (want <= %.0f%%), redo it\n",
+                  cal.calSpread, CAL_MAX_SPREAD_PCT);
   } else {
     Serial.println(F("# magnetometer not calibrated, send 'c' to calibrate"));
   }

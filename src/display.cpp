@@ -47,7 +47,7 @@ static void drawCalibrating() {
     oled.println();
   }
   oled.setCursor(0, 56);
-  oled.print(F("press=save hold=undo"));
+  oled.printf("n=%-4u press=save", calSamples());
 }
 
 static void drawMenu() {
@@ -131,13 +131,22 @@ static void drawAngles() {
   }
 
   // Status row: which axis the dial edits, how the device is mounted, and
-  // whether azimuth can be trusted at all.
+  // one slot answering "can I trust this azimuth". MAG! outranks the stored
+  // grade, because interference now matters more than how good the fit was.
   oled.setCursor(0, 54);
   oled.print(uiEditEl() ? F("az  [EL]") : F("[AZ]  el"));
   oled.setCursor(50, 54);
   oled.print(mountName(cal.mount));
-  oled.setCursor(92, 54);
-  oled.print(cal.magCal ? F("cal ok") : F("NO CAL"));
+  oled.setCursor(86, 54);
+  if (fieldSuspect(o.b)) {
+    oled.print(F("MAG!"));
+  } else if (cal.magCal) {
+    oled.printf("ok %.0f%%", cal.calSpread);
+  } else if (cal.calSpread > 0) {
+    oled.printf("BAD %.0f%%", cal.calSpread);
+  } else {
+    oled.print(F("NO CAL"));
+  }
 }
 
 void displayDraw(bool sensorOk) {
