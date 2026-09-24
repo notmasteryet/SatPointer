@@ -50,13 +50,25 @@ The min/max hard-iron fit plus crude scale needs a real quality signal. The
 symptom is already visible: `dip` swings 59°–75° with tilt when it should hold
 constant.
 
-- **Use dip variance as the live quality metric.** It is the one number that
-  says "your azimuth is lying to you", and it needs no reference instrument.
-- Keep the per-axis coverage bars; add a pass/fail on dip stability at the end.
+- **Use |B| variance as the primary quality metric, not dip.** Measured
+  2026-09-23: waving the device through 135° of elevation and a full turn of
+  roll gave dip a 20° spread but |B| an 11% spread. Dip is computed from the
+  magnetic vector *and* the accelerometer's idea of down, so handling
+  acceleration corrupts it — it conflates magnetometer error with motion. |B|
+  is just the corrected field magnitude and touches no other sensor, so it
+  isolates the hard/soft-iron fit. Earth's field is locally constant, so any
+  variation is calibration error or interference.
+- Keep dip as a secondary check, evaluated only while still: it is the thing
+  that catches an accelerometer/magnetometer axis-mapping mistake, which |B|
+  alone cannot see.
+- Keep the per-axis coverage bars; add a pass/fail on |B| stability at the end.
 - Consider an ellipsoid fit instead of min/max — noticeably better and
-  affordable on this chip.
-- Calibrate **with the device mounted on the beam**. A dish reflector is a
-  large distorting mass.
+  affordable on this chip. The 11% spread above is with min/max.
+- **Calibrate in the exact final configuration, cables included.** The first
+  real calibration was done with the UART unplugged (a tether fights the
+  rotation) and then measured with it plugged in; hard-iron offsets are
+  specific to the surrounding metal and do not transfer. A dish reflector is a
+  much larger distorting mass again.
 
 ## 3. WiFi, mDNS, NTP, OTA
 
