@@ -5,6 +5,23 @@
 #include "settings.h"
 
 static bool active = false;
+static CalResult result = CAL_RESULT_NONE;
+static float resultSd = 0;
+static unsigned long resultAt = 0;
+static const unsigned long RESULT_SHOW_MS = 10000;
+
+CalResult calResult() { return result; }
+float calResultSd() { return resultSd; }
+bool calResultFresh() {
+  return result != CAL_RESULT_NONE && millis() - resultAt < RESULT_SHOW_MS;
+}
+void calResultDismiss() { result = CAL_RESULT_NONE; }
+
+static void setResult(CalResult r, float sd) {
+  result = r;
+  resultSd = sd;
+  resultAt = millis();
+}
 static int16_t lo[3], hi[3];
 
 // The fit is not known until the rotation ends, so grading it means keeping
@@ -42,6 +59,7 @@ void calStart() {
   stride = 1;
   phase = 0;
   active = true;
+  result = CAL_RESULT_NONE;
   Serial.println(F("# calibrating: slowly rotate through all orientations, then press or send 'c'"));
 }
 
@@ -98,12 +116,14 @@ void calFinish() {
     r[i] = (hi[i] - (float)lo[i]) / 2;
     if (r[i] < 300) {
       Serial.printf("# calibration failed: axis %c barely moved, rotate further\n", 'X' + i);
+      setResult(CAL_RESULT_NO_ROTATION, 0);
       return;
     }
     avg += r[i] / 3;
   }
   if (count < 20) {
     Serial.println(F("# calibration failed: too few samples to grade, rotate for longer"));
+    setResult(CAL_RESULT_NO_SAMPLES, 0);
     return;
   }
 
@@ -117,6 +137,7 @@ void calFinish() {
   cal.calField = mean;
   cal.calSpread = spread;
   cal.magCal = spread <= CAL_MAX_SPREAD_PCT;
+  setResult(cal.magCal ? CAL_RESULT_OK : CAL_RESULT_POOR, spread);
 
   settingsSave();
   // The correction changed under the filter, so its contents are stale.

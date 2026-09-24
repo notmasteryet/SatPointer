@@ -109,6 +109,14 @@ void uiUpdate() {
     return;
   }
 
+  // The verdict owns the screen while it is up, so a press acknowledges it
+  // instead of doing whatever that press would otherwise have done.
+  if (calResultFresh() && ev != InputEvent::None) {
+    calResultDismiss();
+    flushTarget();
+    return;
+  }
+
   switch (mode) {
     case UI_MAIN:
       if (detents) {

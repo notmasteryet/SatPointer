@@ -50,6 +50,47 @@ static void drawCalibrating() {
   oled.printf("n=%-4u press=save", calSamples());
 }
 
+// Shown for a few seconds after calibration ends. Without this a calibration
+// run from the menu just returns to the angles screen, so a rejected one looks
+// exactly like a successful one.
+static void drawCalResult() {
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("CALIBRATION"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+
+  oled.setTextSize(2);
+  oled.setCursor(0, 18);
+  switch (calResult()) {
+    case CAL_RESULT_OK: oled.print(F("OK")); break;
+    case CAL_RESULT_POOR: oled.print(F("POOR")); break;
+    default: oled.print(F("FAILED")); break;
+  }
+
+  oled.setTextSize(1);
+  oled.setCursor(0, 40);
+  switch (calResult()) {
+    case CAL_RESULT_OK:
+      oled.printf("sd %.2f%%  |B| %.0fuT", calResultSd(), cal.calField);
+      break;
+    case CAL_RESULT_POOR:
+      oled.printf("sd %.2f%% - want <%.0f%%", calResultSd(), CAL_MAX_SPREAD_PCT);
+      oled.setCursor(0, 50);
+      oled.print(F("rotate more, go slow"));
+      break;
+    case CAL_RESULT_NO_ROTATION:
+      oled.print(F("an axis barely moved"));
+      oled.setCursor(0, 50);
+      oled.print(F("turn it every way"));
+      break;
+    default:
+      oled.print(F("too short to grade"));
+      oled.setCursor(0, 50);
+      oled.print(F("rotate for longer"));
+      break;
+  }
+}
+
 static void drawMenu() {
   oled.setTextSize(1);
   oled.setCursor(0, 0);
@@ -163,6 +204,8 @@ void displayDraw(bool sensorOk) {
     oled.printf("qmc5883 %s\n", sensorsProbe(QMC_ADDR) ? "ok" : "MISSING");
   } else if (calActive()) {
     drawCalibrating();
+  } else if (calResultFresh()) {
+    drawCalResult();
   } else if (uiMode() == UI_MENU) {
     drawMenu();
   } else if (uiMode() == UI_MOUNT) {

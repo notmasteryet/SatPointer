@@ -22,6 +22,22 @@ const float CAL_MAX_SPREAD_PCT = 3.0;
 // trusting azimuth - catches interference that appeared since.
 const float FIELD_WARN_PCT = 12.0;
 
+// Why the last calibration ended as it did. Shown on the display, because a
+// calibration started from the menu has no serial attached to read - the whole
+// point of the menu being that no laptop is needed.
+enum CalResult : uint8_t {
+  CAL_RESULT_NONE,
+  CAL_RESULT_OK,
+  CAL_RESULT_POOR,        // fit graded, but not good enough to trust
+  CAL_RESULT_NO_ROTATION, // an axis barely moved
+  CAL_RESULT_NO_SAMPLES,  // too short to grade
+};
+
+CalResult calResult();
+float calResultSd();
+bool calResultFresh();  // true while the verdict is still worth showing
+void calResultDismiss();
+
 bool calActive();
 void calStart();
 void calFinish();

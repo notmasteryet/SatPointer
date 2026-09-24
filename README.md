@@ -145,7 +145,7 @@ Hold the button to open it, turn to choose, press to activate, hold to go back.
 
 | Item | Does |
 |---|---|
-| Calibrate | starts magnetometer calibration — press to save, hold to abandon |
+| Calibrate | starts magnetometer calibration — press to save, hold to abandon. The verdict (OK / POOR / FAILED, with the score) shows on screen afterwards. |
 | Mount | pick the beam mount; turn to preview, press to apply, hold to cancel |
 | Clear target | zeroes both targets |
 | Exit | back to the guidance screen |

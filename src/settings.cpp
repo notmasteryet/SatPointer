@@ -11,8 +11,8 @@ static const size_t EEPROM_SIZE = 128;
 
 // Bumped whenever the struct layout changes, so an older layout in flash is
 // discarded rather than read as garbage. 0xCA1D added targetAz/targetEl,
-// 0xCA1E added mount.
-static const uint16_t SETTINGS_MAGIC = 0xCA1E;
+// 0xCA1E added mount, 0xCA1F added the calibration grade.
+static const uint16_t SETTINGS_MAGIC = 0xCA1F;
 
 Settings cal;
 
@@ -31,13 +31,30 @@ void settingsReset() {
   cal.mount = mountDefault();
 }
 
+// A magic bump is only as good as remembering to do it: forgetting one lets
+// the old bytes be read at the new field offsets, which put NaN into the
+// targets and poisoned every derived number. Cheap insurance against that and
+// against a genuinely corrupted cell.
+static bool badFloat(float f) { return isnan(f) || isinf(f); }
+
+static bool settingsSane() {
+  if (badFloat(cal.azTrim) || badFloat(cal.targetAz) || badFloat(cal.targetEl)) return false;
+  if (badFloat(cal.calField) || badFloat(cal.calSpread)) return false;
+  for (int i = 0; i < 3; i++) {
+    if (badFloat(cal.scale[i]) || cal.scale[i] <= 0.1 || cal.scale[i] > 10.0) return false;
+  }
+  return cal.mount < mountCount();
+}
+
 void settingsBegin() {
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.get(0, cal);
-  if (cal.magic != SETTINGS_MAGIC) settingsReset();
-  // A stored index from a future build, or a corrupted byte, would index off
-  // the end of the mount table on every sample.
-  if (cal.mount >= mountCount()) cal.mount = mountDefault();
+  if (cal.magic != SETTINGS_MAGIC) {
+    settingsReset();
+  } else if (!settingsSane()) {
+    Serial.println(F("# stored settings failed a sanity check, resetting"));
+    settingsReset();
+  }
 }
 
 void settingsSave() {
