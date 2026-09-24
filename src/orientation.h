@@ -33,4 +33,8 @@ bool orientationAngles(Angles &o);
 bool orientationAxis(int8_t axis, float &az, float &elev);
 
 float trimmedAz(const Angles &o);
+
+// "the beam is pointing at this true bearing right now" - stores the
+// difference as the trim, absorbing declination and mounting error together.
+bool orientationSetBearing(float trueBearing);
 float azError(float current);

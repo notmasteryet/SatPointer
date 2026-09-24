@@ -17,13 +17,10 @@ void commandsHelp() {
 }
 
 static void setBearing(float bearing) {
-  Angles o;
-  if (!orientationAngles(o)) {
+  if (!orientationSetBearing(bearing)) {
     Serial.println(F("# no valid reading"));
     return;
   }
-  cal.azTrim = fmod(bearing - o.az + 540.0, 360.0) - 180.0;
-  settingsSave();
   Serial.print(F("# bearing set to "));
   Serial.println(bearing, 1);
   settingsPrint();

@@ -231,8 +231,19 @@ Targets set over the network are **not** written to flash. gpredict sends `P`
 about once a second for the length of a pass, which through the encoder's save
 path would be thousands of flash writes.
 
-There is also a plain-text status at `http://satpointer.local/status`, which is
-the easiest way to see inside the device with no serial cable attached.
+## Config page
+
+`http://satpointer.local` is where the fiddly settings live, rather than on a
+128x64 panel behind one knob. Live azimuth and elevation with which way to
+turn, the target, beam mount, azimuth trim, calibration with live coverage bars
+and its graded verdict, WiFi credentials, radio toggle, and erase.
+
+The device keeps the target dial and the guidance screen; the browser gets
+everything else. Serial commands still work and are the fallback when there is
+no network.
+
+Two other endpoints: `/status` is plain text for shells and scripts, `/api` is
+JSON and is what the page polls.
 
 ## Calibration (do once)
 

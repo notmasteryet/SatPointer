@@ -5,9 +5,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
-#include "orientation.h"
-#include "rotctl.h"
 #include "settings.h"
+#include "web.h"
 
 static const char *HOSTNAME = "satpointer";
 static const char *AP_SSID = "SatPointer-setup";
@@ -39,87 +38,14 @@ String netAddress() {
   return String("-");
 }
 
-// Deliberately tiny and embedded rather than served from a filesystem: a few
-// hundred bytes of HTML keeps this to one firmware image with no separate
-// upload step, which matters when the whole point is to stop needing the
-// serial cable.
-static const char PORTAL_PAGE[] PROGMEM =
-    "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<title>SatPointer</title>"
-    "<style>body{font:16px system-ui;margin:2rem auto;max-width:22rem;padding:0 1rem}"
-    "input{width:100%;padding:.6rem;margin:.3rem 0 1rem;box-sizing:border-box}"
-    "button{width:100%;padding:.7rem;font-size:1rem}</style>"
-    "<h2>SatPointer WiFi</h2><form method=post action=/save>"
-    "<label>Network</label><input name=s maxlength=32 required>"
-    "<label>Password</label><input name=p type=password maxlength=64>"
-    "<button>Save and reboot</button></form>";
-
-// Plain text on purpose: with the serial cable gone this is the only way to
-// see inside the device, and it wants to be trivially greppable rather than
-// pretty. The browsable version is the phase 4 config page.
-static void handleStatus() {
-  Angles o;
-  bool fix = orientationAngles(o);
-  String r;
-  r.reserve(420);
-  r += "state "; r += netStateName(); r += '\n';
-  r += "ip "; r += WiFi.localIP().toString(); r += '\n';
-  r += "ssid "; r += cal.ssid; r += '\n';
-  r += "mount "; r += mountName(cal.mount); r += ' '; r += mountBeamAxis(cal.mount); r += '\n';
-  r += "cal "; r += (cal.magCal ? "ok" : (cal.calSpread > 0 ? "poor" : "none"));
-  r += " sd "; r += String(cal.calSpread, 2);
-  r += " field "; r += String(cal.calField, 1); r += '\n';
-  r += "aztrim "; r += String(cal.azTrim, 1); r += '\n';
-  if (fix) {
-    r += "az "; r += String(trimmedAz(o), 1); r += '\n';
-    r += "el "; r += String(o.elev, 1); r += '\n';
-    r += "roll "; r += String(o.roll, 1); r += '\n';
-    r += "dip "; r += String(o.dip, 1); r += '\n';
-    r += "field "; r += String(o.b, 1); r += '\n';
-  } else {
-    r += "fix none\n";
-  }
-  r += "target "; r += String(cal.targetAz, 1); r += ' '; r += String(cal.targetEl, 1); r += '\n';
-  r += "rotctl "; r += (rotctlConnected() ? "connected" : "idle");
-  r += rotctlDriving() ? " driving\n" : "\n";
-  r += "uptime "; r += millis() / 1000; r += '\n';
-  r += "heap "; r += ESP.getFreeHeap(); r += '\n';
-  server.send(200, "text/plain", r);
-}
-
-static void handleRoot() {
-  if (state == NET_PORTAL) {
-    server.send_P(200, "text/html", PORTAL_PAGE);
-  } else {
-    handleStatus();
-  }
-}
-
 // Registered once. A portal -> online -> portal cycle would otherwise add a
 // second handler for "/" and the first one would win forever.
 static bool httpUp = false;
-static void handleSave();  // defined below, beside the portal form
-
 static void startHttp() {
   if (httpUp) return;
   httpUp = true;
-  server.on("/", handleRoot);
-  server.on("/status", handleStatus);
-  server.on("/save", HTTP_POST, handleSave);
+  webRegisterRoutes(server);
   server.begin();
-}
-
-static void handleSave() {
-  String ssid = server.arg("s");
-  String pass = server.arg("p");
-  if (!ssid.length()) {
-    server.send(400, "text/plain", "network name required");
-    return;
-  }
-  netSetCredentials(ssid.c_str(), pass.c_str());
-  server.send(200, "text/html", "<meta charset=utf-8><h3>Saved. Rebooting.</h3>");
-  delay(300);
-  ESP.restart();
 }
 
 static void startPortal() {

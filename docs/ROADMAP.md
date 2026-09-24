@@ -143,7 +143,7 @@ numbers when you are up a ladder with one hand on the dish.
 Also: **roll is dish skew** — LNB polarisation angle. It may deserve promoting
 from a diagnostic to a first-class target alongside azimuth and elevation.
 
-## 6. HTTP config page
+## 6. HTTP config page — DONE 2026-09-24
 
 Splits the UI properly: **OLED for field guidance, browser for setup.** Keeps
 the encoder doing one job instead of growing a menu tree on a 128×64 panel.
@@ -154,10 +154,19 @@ the encoder doing one job instead of growing a menu tree on a 128×64 panel.
 - **Embed the page in PROGMEM, not LittleFS.** A few KB of HTML means one
   firmware image and no separate filesystem upload step.
 
-Moves to the browser: WiFi credentials, mount orientation and roll offset,
-azimuth trim, calibration run with live coverage and dip-variance quality,
-target presets. Stays on the device: the target dial and the guidance screen.
-Serial commands stay as the no-WiFi fallback.
+In the browser: live readout, target, mount, azimuth trim, calibration with
+live coverage bars and the graded verdict, WiFi credentials, radio toggle and
+erase. On the device: the target dial and the guidance screen. Serial commands
+stay as the no-WiFi fallback, and `/status` serves plain text for shells.
+
+Not done here: **the roll offset**, because which direction is "up" for each
+mount is still the open question from section 1, and a field to type a number
+into does not answer it. Target presets were not built either — nothing has
+asked for more than one target yet.
+
+The page is ~6 KB in PROGMEM and one firmware image, as planned. HTTP handlers
+live in `web.cpp`; `net.cpp` kept only the job of getting and staying on the
+network.
 
 ## Cross-cutting
 
@@ -173,7 +182,7 @@ Serial commands stay as the no-WiFi fallback.
 1. ~~Refactor~~, ~~mount orientation~~, ~~calibration grading~~ — done
 2. ~~WiFi + OTA~~ — done; the supply needed no work after all
 3. ~~rotctld~~ — done, pending a test against real gpredict
-4. HTTP config page
+4. ~~HTTP config page~~ — done
 5. Guidance graphics
 6. Ellipsoid calibration fit — **deprioritised 2026-09-23**
 

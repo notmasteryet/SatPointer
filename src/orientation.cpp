@@ -155,6 +155,14 @@ float trimmedAz(const Angles &o) {
   return fmod(o.az + cal.azTrim + 720.0, 360.0);
 }
 
+bool orientationSetBearing(float trueBearing) {
+  Angles o;
+  if (!orientationAngles(o)) return false;
+  cal.azTrim = fmod(trueBearing - o.az + 540.0, 360.0) - 180.0;
+  settingsSave();
+  return true;
+}
+
 // Shortest signed way round: positive means turn clockwise (right).
 float azError(float current) {
   return fmod(cal.targetAz - current + 540.0, 360.0) - 180.0;
