@@ -6,10 +6,10 @@
 
 #include "calibration.h"
 #include "config.h"
-#include "input.h"
 #include "orientation.h"
 #include "sensors.h"
 #include "settings.h"
+#include "ui.h"
 
 static Adafruit_SSD1306 oled(128, OLED_H, &Wire, -1);
 static bool present = false;
@@ -47,7 +47,50 @@ static void drawCalibrating() {
     oled.println();
   }
   oled.setCursor(0, 56);
-  oled.print(F("send 'c' to finish"));
+  oled.print(F("press=save hold=undo"));
+}
+
+static void drawMenu() {
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("MENU"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+  for (uint8_t i = 0; i < uiMenuCount(); i++) {
+    oled.setCursor(0, 16 + i * 10);
+    oled.print(i == uiMenuIndex() ? '>' : ' ');
+    oled.print(' ');
+    oled.print(uiMenuLabel(i));
+    // Show the value beside the item it belongs to, so the menu answers
+    // "what is it set to now" without another press.
+    const char *v = uiMenuValue(i);
+    if (v) {
+      oled.setCursor(84, 16 + i * 10);
+      oled.print(v);
+    }
+  }
+  oled.setCursor(0, 56);
+  oled.print(F("hold = back"));
+}
+
+static void drawMountPicker() {
+  uint8_t m = uiMountPreview();
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("BEAM MOUNT"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+
+  oled.setTextSize(2);
+  oled.setCursor(0, 18);
+  oled.print(mountName(m));
+  oled.setTextSize(1);
+  oled.setCursor(0, 38);
+  oled.printf("beam %s", mountBeamAxis(m));
+  if (m == cal.mount) {
+    oled.setCursor(72, 38);
+    oled.print(F("(current)"));
+  }
+  oled.setCursor(0, 56);
+  oled.print(F("press=set hold=cancel"));
 }
 
 static void drawAngles() {
@@ -90,7 +133,7 @@ static void drawAngles() {
   // Status row: which axis the dial edits, how the device is mounted, and
   // whether azimuth can be trusted at all.
   oled.setCursor(0, 54);
-  oled.print(inputEditEl() ? F("az  [EL]") : F("[AZ]  el"));
+  oled.print(uiEditEl() ? F("az  [EL]") : F("[AZ]  el"));
   oled.setCursor(50, 54);
   oled.print(mountName(cal.mount));
   oled.setCursor(92, 54);
@@ -111,6 +154,10 @@ void displayDraw(bool sensorOk) {
     oled.printf("qmc5883 %s\n", sensorsProbe(QMC_ADDR) ? "ok" : "MISSING");
   } else if (calActive()) {
     drawCalibrating();
+  } else if (uiMode() == UI_MENU) {
+    drawMenu();
+  } else if (uiMode() == UI_MOUNT) {
+    drawMountPicker();
   } else {
     drawAngles();
   }

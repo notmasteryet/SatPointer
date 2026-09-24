@@ -137,7 +137,25 @@ raise          30.0
 - **turn the encoder** to move the target
 - **press** to switch between editing azimuth and elevation — the bracketed
   label shows which is live
-- **hold** for 0.8s to clear both targets
+- **hold** for 0.8s to open the menu
+
+## Menu
+
+Hold the button to open it, turn to choose, press to activate, hold to go back.
+
+| Item | Does |
+|---|---|
+| Calibrate | starts magnetometer calibration — press to save, hold to abandon |
+| Mount | pick the beam mount; turn to preview, press to apply, hold to cancel |
+| Clear target | zeroes both targets |
+| Exit | back to the guidance screen |
+
+The mount picker previews without committing, so turning past the one you want
+costs nothing. Applying a mount resets the sensor filter and warns that the
+magnetometer calibration no longer holds.
+
+Calibration is the same whether started from the menu or by sending `c`, so
+either can finish it.
 
 The target is saved to EEPROM two seconds after you stop turning, so a sweep of
 the dial costs one flash write rather than one per detent.
@@ -178,6 +196,7 @@ Both are saved to EEPROM and survive a restart.
 | Command | Action |
 |---|---|
 | `c` | start / finish magnetometer calibration |
+| `x` | abandon a calibration in progress |
 | `nDEG` | the beam is currently pointing at true bearing DEG |
 | `m` | cycle the beam mount (top / left / right / down) |
 | `r` | switch raw sensor output on or off |

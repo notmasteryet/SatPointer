@@ -32,6 +32,11 @@ void calFeed(const int16_t rawMag[3]) {
   }
 }
 
+void calCancel() {
+  active = false;
+  Serial.println(F("# calibration cancelled, stored calibration unchanged"));
+}
+
 void calFinish() {
   active = false;
   float r[3], avg = 0;

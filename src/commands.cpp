@@ -5,12 +5,13 @@
 #include "orientation.h"
 #include "sensors.h"
 #include "settings.h"
+#include "ui.h"
 
 static bool rawMode = false;
 
 void commandsHelp() {
-  Serial.println(F("# SatPointer: c=calibrate nDEG=set bearing m=mount r=raw"));
-  Serial.println(F("#             e=encoder p=print z=erase h=help"));
+  Serial.println(F("# SatPointer: c=calibrate x=cancel-cal nDEG=set bearing m=mount"));
+  Serial.println(F("#             r=raw e=encoder p=print z=erase h=help"));
 }
 
 static void setBearing(float bearing) {
@@ -26,26 +27,17 @@ static void setBearing(float bearing) {
   settingsPrint();
 }
 
-// Cycles rather than taking an index: there are only four, and a wrong digit
-// on a 4-item list is more annoying than one extra press.
-static void nextMount() {
-  cal.mount = (cal.mount + 1) % mountCount();
-  settingsSave();
-  // The filter holds vectors in the old frame; blending them across a mount
-  // change would drift through nonsense for a second or so.
-  orientationReset();
-  Serial.printf("# mount %s (beam %s) - recalibrate, the beam's metal moved\n",
-                mountName(cal.mount), mountBeamAxis(cal.mount));
-}
-
 void commandsUpdate() {
   while (Serial.available()) {
     switch (Serial.read()) {
       case 'c': calActive() ? calFinish() : calStart(); break;
+      case 'x': if (calActive()) calCancel(); break;
       // The ESP8266 core's Stream has no LookaheadMode overload; the plain
       // parseFloat() already skips leading non-numeric characters.
       case 'n': setBearing(Serial.parseFloat()); break;
-      case 'm': nextMount(); break;
+      // Cycles rather than taking an index: only four, and a wrong digit on a
+      // 4-item list is more annoying than one extra press.
+      case 'm': uiSetMount((cal.mount + 1) % mountCount()); break;
       case 'r': rawMode = !rawMode; break;
       case 'p': settingsPrint(); break;
       case 'e': inputDiag(); break;

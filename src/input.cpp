@@ -1,7 +1,6 @@
 #include "input.h"
 
 #include "config.h"
-#include "settings.h"
 
 // Quadrature state table: index is (previous << 2 | current), value is the
 // direction of travel. Invalid transitions (a missed edge) map to 0.
@@ -10,11 +9,9 @@ static const int8_t ENC_TABLE[16] = { 0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 
 static volatile int8_t encCount = 0;
 static volatile uint8_t encState = 0;
 
-static bool editEl = false;
-static bool targetDirty = false;
-static unsigned long targetTouched = 0;
-
-bool inputEditEl() { return editEl; }
+static int8_t partial = 0;   // quadrature counts not yet a whole detent
+static int8_t detents = 0;   // whole detents waiting to be read
+static InputEvent pending = InputEvent::None;
 
 static void IRAM_ATTR encISR() {
   uint8_t s = (digitalRead(PIN_ENC_A) << 1) | digitalRead(PIN_ENC_B);
@@ -31,37 +28,20 @@ void inputBegin() {
   attachInterrupt(digitalPinToInterrupt(PIN_ENC_B), encISR, CHANGE);
 }
 
-// The target is written to EEPROM only once the dial has been still for a
-// while - otherwise a single sweep of the encoder would burn a flash write per
-// detent.
-static void touchTarget() {
-  targetDirty = true;
-  targetTouched = millis();
-}
-
-static void handleRotation() {
+// The long press has to fire while the button is still held, not on release -
+// otherwise you cannot tell you have held it long enough without letting go.
+void inputPoll() {
   noInterrupts();
   int8_t c = encCount;
   encCount = 0;
   interrupts();
-  if (!c) return;
-
-  static int8_t partial = 0;
-  partial += c;
-  int8_t detents = partial / COUNTS_PER_DETENT;
-  partial -= detents * COUNTS_PER_DETENT;
-  if (!detents) return;
-
-  if (editEl) {
-    cal.targetEl = constrain(cal.targetEl + detents * STEP_DEG, -90.0, 90.0);
-  } else {
-    cal.targetAz = fmod(cal.targetAz + detents * STEP_DEG + 360.0, 360.0);
+  if (c) {
+    partial += c;
+    int8_t whole = partial / COUNTS_PER_DETENT;
+    partial -= whole * COUNTS_PER_DETENT;
+    detents += whole;
   }
-  touchTarget();
-}
 
-// Short press swaps the axis being edited, long press clears both targets.
-static void handleButton() {
   static bool pressed = false;
   static bool longFired = false;
   static unsigned long edge = 0;
@@ -74,34 +54,30 @@ static void handleButton() {
     if (down) {
       longFired = false;
     } else if (!longFired) {
-      editEl = !editEl;
-      Serial.printf("# editing %s\n", editEl ? "elevation" : "azimuth");
+      pending = InputEvent::ShortPress;
     }
   }
   if (pressed && !longFired && now - edge >= LONGPRESS_MS) {
     longFired = true;
-    cal.targetAz = 0;
-    cal.targetEl = 0;
-    touchTarget();
-    Serial.println(F("# target cleared"));
+    pending = InputEvent::LongPress;
   }
 }
 
-void inputUpdate() {
-  handleRotation();
-  handleButton();
+int8_t inputTakeDetents() {
+  int8_t d = detents;
+  detents = 0;
+  return d;
+}
 
-  if (targetDirty && millis() - targetTouched > TARGET_SAVE_MS) {
-    targetDirty = false;
-    settingsSave();
-    Serial.printf("# target saved az %.1f el %.1f\n", cal.targetAz, cal.targetEl);
-  }
+InputEvent inputTakeEvent() {
+  InputEvent e = pending;
+  pending = InputEvent::None;
+  return e;
 }
 
 // Separates "encoder not wired" from "decoder logic wrong": if A/B never
 // change as you turn, the quadrature common pin is not grounded.
 void inputDiag() {
-  Serial.printf("# enc A=%d B=%d btn=%d edits=%s\n", digitalRead(PIN_ENC_A),
-                digitalRead(PIN_ENC_B), digitalRead(PIN_ENC_BTN),
-                editEl ? "el" : "az");
+  Serial.printf("# enc A=%d B=%d btn=%d\n", digitalRead(PIN_ENC_A),
+                digitalRead(PIN_ENC_B), digitalRead(PIN_ENC_BTN));
 }

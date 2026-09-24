@@ -13,6 +13,7 @@
 #include "config.h"
 #include "display.h"
 #include "input.h"
+#include "ui.h"
 #include "orientation.h"
 #include "sensors.h"
 #include "settings.h"
@@ -42,7 +43,7 @@ void setup() {
 
 void loop() {
   commandsUpdate();
-  inputUpdate();
+  uiUpdate();
 
   unsigned long now = millis();
 

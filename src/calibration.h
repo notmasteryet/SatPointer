@@ -6,6 +6,7 @@
 bool calActive();
 void calStart();
 void calFinish();
+void calCancel();  // abandon without touching stored calibration
 void calFeed(const int16_t rawMag[3]);  // ignored unless active
 
 long calSpan(uint8_t axis);
