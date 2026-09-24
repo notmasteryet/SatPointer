@@ -156,10 +156,16 @@ Serial commands stay as the no-WiFi fallback.
 
 ## Sequencing
 
-1. ~~Refactor~~, ~~mount orientation~~, calibration quality — no WiFi, no power risk
+1. ~~Refactor~~, ~~mount orientation~~, ~~calibration grading~~ — done
 2. Fix the supply, then WiFi + OTA (OTA early makes everything after painless)
 3. rotctld
 4. HTTP config page
 5. Guidance graphics
+6. Ellipsoid calibration fit — **deprioritised 2026-09-23**
 
-Front-loads everything that does not depend on solving the power problem.
+The ellipsoid fit was the natural continuation of phase 1, but it is a
+refinement of something that already works well enough to use: calibration
+scores ~4.5% and the device says so rather than pretending otherwise, so
+azimuth is usable with a known caveat instead of silently wrong. Features come
+first. Pick it up when azimuth accuracy is the thing actually blocking a real
+aiming job.
