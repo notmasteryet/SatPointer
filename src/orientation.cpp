@@ -18,24 +18,29 @@ struct Mount {
   int8_t up;
 };
 
+// Measured with the 'a' command, not inferred: held with the top face north
+// and the screen up, +X read north, +Y west, -Y east and -Z straight down. An
+// earlier version of this table was guessed from the board layout and had
+// three of the four entries wrong.
 static const Mount MOUNTS[] = {
-  { "top",   "+Y", +2, +3 },  // beam out the left face
-  { "left",  "-X", -1, +3 },  // beam out the back
-  { "right", "+X", +1, +3 },  // beam out the front
-  { "down",  "-Z", -3, +1 },  // beam out the bottom, screen faces up
+  { "top",   "+X", +1, +3 },  // beam out the top face, screen up
+  { "left",  "+Y", +2, +3 },
+  { "right", "-Y", -2, +3 },
+  { "away",  "-Z", -3, +1 },  // beam out the back, screen up
 };
 static const uint8_t MOUNT_COUNT = sizeof(MOUNTS) / sizeof(MOUNTS[0]);
-static const uint8_t MOUNT_RIGHT = 2;  // +X, the orientation the POC ran in
+// The beam axis the POC was verified in, which is the top face.
+static const uint8_t MOUNT_TOP = 0;
 
 uint8_t mountCount() { return MOUNT_COUNT; }
-uint8_t mountDefault() { return MOUNT_RIGHT; }
+uint8_t mountDefault() { return MOUNT_TOP; }
 
 const char *mountName(uint8_t i) {
-  return MOUNTS[i < MOUNT_COUNT ? i : MOUNT_RIGHT].name;
+  return MOUNTS[i < MOUNT_COUNT ? i : MOUNT_TOP].name;
 }
 
 const char *mountBeamAxis(uint8_t i) {
-  return MOUNTS[i < MOUNT_COUNT ? i : MOUNT_RIGHT].beamLabel;
+  return MOUNTS[i < MOUNT_COUNT ? i : MOUNT_TOP].beamLabel;
 }
 
 // ---- vector math ----
@@ -70,21 +75,10 @@ static void axisVec(int8_t s, float v[3]) {
   v[abs(s) - 1] = s < 0 ? -1.0 : 1.0;
 }
 
-// Board frame -> canonical frame, where the beam is forward. With the "right"
-// mount (beam +X, up +Z) this is the identity, so the POC's behaviour is
-// preserved exactly.
-static void toCanonical(const float in[3], float out[3]) {
-  const Mount &m = MOUNTS[cal.mount < MOUNT_COUNT ? cal.mount : MOUNT_RIGHT];
-  float fwd[3], up[3], left[3];
-  axisVec(m.beam, fwd);
-  axisVec(m.up, up);
-  cross(up, fwd, left);  // forward x left = up, so left = up x forward
-  out[0] = dot(in, fwd);
-  out[1] = dot(in, left);
-  out[2] = dot(in, up);
-}
-
-// ---- filtered state, canonical frame ----
+// ---- filtered state, board frame ----
+// Filtering in the board frame rather than the beam frame means a mount change
+// does not invalidate the filter: the mount only affects which direction we
+// ask about, not what the sensors measured.
 static float acc[3], mag[3];
 static bool haveSample = false;
 
@@ -98,44 +92,59 @@ void orientationUpdate(const int16_t rawAcc[3], const int16_t rawMag[3]) {
     m[i] = (rawMag[i] - cal.offset[i]) * cal.scale[i];
   }
 
-  float ab[3], mb[3];  // board frame
   for (int i = 0; i < 3; i++) {
-    ab[i] = mapAxis(a, ACC_AXIS[i]);
-    mb[i] = mapAxis(m, MAG_AXIS[i]);
-  }
-
-  float ac[3], mc[3];  // canonical frame
-  toCanonical(ab, ac);
-  toCanonical(mb, mc);
-
-  for (int i = 0; i < 3; i++) {
+    float av = mapAxis(a, ACC_AXIS[i]);
+    float mv = mapAxis(m, MAG_AXIS[i]);
     if (haveSample) {
-      acc[i] += ALPHA * (ac[i] - acc[i]);
-      mag[i] += ALPHA * (mc[i] - mag[i]);
+      acc[i] += ALPHA * (av - acc[i]);
+      mag[i] += ALPHA * (mv - mag[i]);
     } else {
-      acc[i] = ac[i];
-      mag[i] = mc[i];
+      acc[i] = av;
+      mag[i] = mv;
     }
   }
   haveSample = true;
 }
 
-// Azimuth without trim.
-bool orientationAngles(Angles &o) {
+// Down, East and North as unit vectors in the board frame. The accelerometer
+// reads "up" at rest, hence the negation.
+static bool localFrame(float D[3], float E[3], float N[3]) {
   if (!haveSample) return false;
-
-  // Down, East, North in the canonical frame (accelerometer reads "up" at rest)
-  float D[3] = { -acc[0], -acc[1], -acc[2] };
-  float E[3], N[3];
+  D[0] = -acc[0];
+  D[1] = -acc[1];
+  D[2] = -acc[2];
   if (!normalize(D)) return false;
   cross(D, mag, E);
   if (!normalize(E)) return false;
   cross(E, D, N);
+  return true;
+}
 
-  // The beam is (1,0,0) here, so its N/E/D components are the first elements
-  o.elev = asin(constrain(-D[0], -1.0, 1.0)) * RAD_TO_DEG;
-  o.az = atan2(E[0], N[0]) * RAD_TO_DEG;
-  o.roll = atan2(acc[1], acc[2]) * RAD_TO_DEG;
+bool orientationAxis(int8_t axis, float &az, float &elev) {
+  float D[3], E[3], N[3], f[3];
+  if (!localFrame(D, E, N)) return false;
+  axisVec(axis, f);
+  elev = asin(constrain(-dot(D, f), -1.0, 1.0)) * RAD_TO_DEG;
+  az = fmod(atan2(dot(E, f), dot(N, f)) * RAD_TO_DEG + 360.0, 360.0);
+  return true;
+}
+
+// Azimuth without trim.
+bool orientationAngles(Angles &o) {
+  float D[3], E[3], N[3];
+  if (!localFrame(D, E, N)) return false;
+
+  const Mount &mt = MOUNTS[cal.mount < MOUNT_COUNT ? cal.mount : MOUNT_TOP];
+  float f[3], up[3], left[3];
+  axisVec(mt.beam, f);
+  axisVec(mt.up, up);
+  cross(up, f, left);  // beam x left = up, so left = up x beam
+
+  o.elev = asin(constrain(-dot(D, f), -1.0, 1.0)) * RAD_TO_DEG;
+  o.az = atan2(dot(E, f), dot(N, f)) * RAD_TO_DEG;
+  // Roll about the beam, measured from the mount's reference up.
+  o.roll = atan2(dot(acc, left), dot(acc, up)) * RAD_TO_DEG;
+
   float b = norm(mag);
   o.b = b / QMC_LSB_PER_UT;
   o.dip = asin(constrain(dot(mag, D) / b, -1.0, 1.0)) * RAD_TO_DEG;

@@ -27,5 +27,10 @@ bool orientationReady();
 void orientationUpdate(const int16_t rawAcc[3], const int16_t rawMag[3]);
 bool orientationAngles(Angles &o);
 
+// Azimuth and elevation of one board axis (+-1/2/3 = +-X/Y/Z), whatever the
+// mount is set to. Used to work out which board axis corresponds to which
+// physical face of the device, by pointing a known face at a known bearing.
+bool orientationAxis(int8_t axis, float &az, float &elev);
+
 float trimmedAz(const Angles &o);
 float azError(float current);

@@ -76,17 +76,20 @@ is fitted and flags anything unexpected on the bus.
 The beam points along one of four device axes. Press `m` to cycle; the current
 one shows in the status row and in `p` output.
 
-| Mount | Beam axis | Device orientation |
+| Mount | Beam axis | Beam points out the device's |
 |---|---|---|
-| `top` | +Y | beam out the left face |
-| `left` | −X | beam out the back |
-| `right` | +X | beam out the front (default) |
-| `down` | −Z | beam out the bottom, screen faces up |
+| `top` | +X | top face (default) |
+| `left` | +Y | left side |
+| `right` | −Y | right side |
+| `away` | −Z | back, away from the screen |
 
 Axes are the board frame: X = the GY-521's printed +X arrow, Y = left, Z = up.
-Internally the sensor vectors are rotated into a canonical frame where the beam
-is +X, so the fusion maths never sees the mount setting — `right` is the exact
-identity.
+
+**This table was measured, not inferred.** Holding the device with its top face
+at true north and the screen up, the `a` command reported +X north, +Y west, −Y
+east and −Z straight down. An earlier version was worked out from how the board
+looked and had three of the four entries wrong — if you rebuild the hardware,
+re-measure it with `a` rather than reasoning about it.
 
 **Changing the mount means recalibrating.** Hard/soft-iron correction is in
 sensor frame and survives moving the sensor relative to itself, but clamping to
@@ -216,6 +219,7 @@ Both are saved to EEPROM and survive a restart.
 | `m` | cycle the beam mount (top / left / right / down) |
 | `r` | switch raw sensor output on or off |
 | `e` | print encoder pin states, for the wiring check above |
+| `a` | print where every board axis is pointing, for filling in the mount table |
 | `p` | print stored settings |
 | `z` | erase settings |
 | `h` | help |

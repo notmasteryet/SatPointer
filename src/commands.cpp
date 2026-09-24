@@ -11,7 +11,7 @@ static bool rawMode = false;
 
 void commandsHelp() {
   Serial.println(F("# SatPointer: c=calibrate x=cancel-cal nDEG=set bearing m=mount"));
-  Serial.println(F("#             r=raw e=encoder p=print z=erase h=help"));
+  Serial.println(F("#             r=raw e=encoder a=axes p=print z=erase h=help"));
 }
 
 static void setBearing(float bearing) {
@@ -41,6 +41,21 @@ void commandsUpdate() {
       case 'r': rawMode = !rawMode; break;
       case 'p': settingsPrint(); break;
       case 'e': inputDiag(); break;
+      // Names every board axis by where it is currently pointing. Point a
+      // known face of the device at a known bearing and this says which axis
+      // that face is, which is the only reliable way to fill in the mount
+      // table - deriving it from how the board looks has already been wrong.
+      case 'a': {
+        static const int8_t AXES[6] = { +1, -1, +2, -2, +3, -3 };
+        static const char *const NAMES[6] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
+        for (int i = 0; i < 6; i++) {
+          float az, el;
+          if (orientationAxis(AXES[i], az, el)) {
+            Serial.printf("# axis %s  az %5.1f  elev %5.1f\n", NAMES[i], az, el);
+          }
+        }
+        break;
+      }
       case 'z':
         settingsReset();
         settingsSave();
