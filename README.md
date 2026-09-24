@@ -197,10 +197,12 @@ wirelessly. If the stored credentials stop working it falls back to the setup
 AP rather than retrying forever — otherwise there would be no way to correct
 them without a cable.
 
-**The radio can be switched off from the menu, and that is not only about
-power.** Transmit current spikes are a changing magnetic field a few
-centimetres from the magnetometer. If you are chasing an azimuth problem, or
-taking a reading you actually care about, turn it off first.
+The radio can be switched off from the menu, or with `W` over serial.
+**Measured 2026-09-24, it does not need to be:** field noise with the radio
+off, idle, and under load was sd 0.091, 0.094 and 0.090 uT, with azimuth sd
+0.54–0.55 throughout — no detectable interference. The toggle stays because
+that result is specific to this layout; re-measure with `W` if the
+magnetometer moves closer to the module.
 
 OTA has no password, so anyone on the network can reflash the device. That is
 usually fine on a home LAN; if it is not, set one with

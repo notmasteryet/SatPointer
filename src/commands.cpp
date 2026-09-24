@@ -12,7 +12,7 @@ static bool rawMode = false;
 
 void commandsHelp() {
   Serial.println(F("# SatPointer: c=calibrate x=cancel-cal nDEG=set bearing m=mount"));
-  Serial.println(F("#             w<ssid> <pass>=wifi r=raw e=encoder a=axes"));
+  Serial.println(F("#             w<ssid> <pass>=wifi W=radio r=raw e=encoder a=axes"));
   Serial.println(F("#             p=print z=erase h=help"));
 }
 
@@ -51,6 +51,13 @@ void commandsUpdate() {
         Serial.println(F("# reboot or toggle wifi in the menu to apply"));
         break;
       }
+      // Capital W toggles the radio. Separate from the menu toggle so the
+      // interference it causes can be measured without a hand near the
+      // magnetometer, which would confound the measurement.
+      case 'W':
+        netSetEnabled(!cal.wifiOn);
+        Serial.printf("# wifi %s\n", cal.wifiOn ? "on" : "off");
+        break;
       case 'r': rawMode = !rawMode; break;
       case 'p': settingsPrint(); break;
       case 'e': inputDiag(); break;

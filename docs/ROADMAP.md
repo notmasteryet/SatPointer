@@ -76,7 +76,7 @@ constant.
   specific to the surrounding metal and do not transfer. A dish reflector is a
   much larger distorting mass again.
 
-## 3. WiFi, mDNS, NTP, OTA
+## 3. WiFi, mDNS, NTP, OTA — DONE 2026-09-24
 
 - **OTA belongs in this phase**, not later. `ArduinoOTA` removes the manual
   GPIO0 flash-mode step, which has been the single biggest time sink so far.
@@ -86,15 +86,21 @@ constant.
 - **NTP is optional.** gpredict does the orbital maths on the PC. Time only
   earns its place if onboard pass prediction happens later — defer it.
 
-Two hardware risks gate this phase:
+Two hardware risks were expected to gate this phase. **Neither materialised**,
+measured 2026-09-24 on the existing USB-UART supply:
 
-- **Power.** WiFi TX pulls ~350 mA peaks. A bare ESP-12F fed from a USB-UART
-  adapter will brown out. Needs a proper 3.3V supply with bulk capacitance
-  before WiFi goes in.
-- **Magnetometer interference.** Those same current spikes are a changing
-  magnetic field next to the QMC5883L. Expect azimuth jitter correlated with
-  transmit. Measure it early; mitigations are physical separation and twisted
-  supply leads.
+- **Power.** No brownout joining the network, and none through a ~15 s OTA,
+  which is the heaviest sustained transmit the device does. The supply was not
+  changed. Revisit if the device is ever battery powered or the adapter
+  changes.
+- **Magnetometer interference.** Not detectable. Field noise with the radio on,
+  off, and under 1400-byte traffic at 10/s: sd 0.094, 0.091 and 0.090 uT, with
+  azimuth sd 0.55, 0.54, 0.54. The differences are inside the noise floor, and
+  the quietest run was a radio-on one. So WiFi can stay on while aiming.
+
+  This holds for the current geometry only. If the magnetometer moves closer to
+  the module or the supply wiring changes, re-measure — the `W` command toggles
+  the radio over serial so the test needs no hands near the sensor.
 
 ## 4. gpredict support — rotctld on TCP 4533
 
@@ -157,7 +163,7 @@ Serial commands stay as the no-WiFi fallback.
 ## Sequencing
 
 1. ~~Refactor~~, ~~mount orientation~~, ~~calibration grading~~ — done
-2. Fix the supply, then WiFi + OTA (OTA early makes everything after painless)
+2. ~~WiFi + OTA~~ — done; the supply needed no work after all
 3. rotctld
 4. HTTP config page
 5. Guidance graphics
