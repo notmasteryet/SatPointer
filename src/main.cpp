@@ -13,6 +13,7 @@
 #include "config.h"
 #include "display.h"
 #include "input.h"
+#include "net.h"
 #include "ui.h"
 #include "orientation.h"
 #include "sensors.h"
@@ -37,11 +38,13 @@ void setup() {
   displaySplash();
 
   settingsBegin();
+  netBegin();
   commandsHelp();
   settingsPrint();
 }
 
 void loop() {
+  netUpdate();
   commandsUpdate();
   uiUpdate();
 

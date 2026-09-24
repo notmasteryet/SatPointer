@@ -2,6 +2,7 @@
 
 #include "calibration.h"
 #include "input.h"
+#include "net.h"
 #include "orientation.h"
 #include "sensors.h"
 #include "settings.h"
@@ -11,7 +12,8 @@ static bool rawMode = false;
 
 void commandsHelp() {
   Serial.println(F("# SatPointer: c=calibrate x=cancel-cal nDEG=set bearing m=mount"));
-  Serial.println(F("#             r=raw e=encoder a=axes p=print z=erase h=help"));
+  Serial.println(F("#             w<ssid> <pass>=wifi r=raw e=encoder a=axes"));
+  Serial.println(F("#             p=print z=erase h=help"));
 }
 
 static void setBearing(float bearing) {
@@ -38,6 +40,17 @@ void commandsUpdate() {
       // Cycles rather than taking an index: only four, and a wrong digit on a
       // 4-item list is more annoying than one extra press.
       case 'm': uiSetMount((cal.mount + 1) % mountCount()); break;
+      // "w<ssid> <password>" - the rest of the line, so an SSID with spaces
+      // still works as long as the password has none.
+      case 'w': {
+        String line = Serial.readStringUntil('\n');
+        line.trim();
+        int sp = line.lastIndexOf(' ');
+        if (sp < 0) netSetCredentials(line.c_str(), "");
+        else netSetCredentials(line.substring(0, sp).c_str(), line.substring(sp + 1).c_str());
+        Serial.println(F("# reboot or toggle wifi in the menu to apply"));
+        break;
+      }
       case 'r': rawMode = !rawMode; break;
       case 'p': settingsPrint(); break;
       case 'e': inputDiag(); break;

@@ -3,6 +3,7 @@
 //   MAIN  turn = move target, press = swap az/el, hold = open menu
 //   MENU  turn = choose, press = activate, hold = back
 //   MOUNT turn = preview a mount, press = apply, hold = cancel
+//   WIFI  press = toggle the radio, hold = back
 //
 // Calibration is not a mode here: it is whatever calActive() says, so the
 // serial 'c' command and the menu entry lead to the same place.
@@ -10,7 +11,7 @@
 
 #include <Arduino.h>
 
-enum UiMode : uint8_t { UI_MAIN, UI_MENU, UI_MOUNT };
+enum UiMode : uint8_t { UI_MAIN, UI_MENU, UI_MOUNT, UI_WIFI };
 
 void uiUpdate();
 

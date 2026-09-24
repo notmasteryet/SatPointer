@@ -3,16 +3,19 @@
 #include <EEPROM.h>
 
 #include "calibration.h"
+#include "net.h"
 #include "orientation.h"
 
 // ESP8266 EEPROM is a RAM shadow of a flash sector: it needs begin() and
 // commit(), unlike the AVR version this started life on.
-static const size_t EEPROM_SIZE = 128;
+// Must exceed sizeof(Settings); the WiFi credentials alone are 98 bytes, which
+// overflowed the previous 128.
+static const size_t EEPROM_SIZE = 256;
 
 // Bumped whenever the struct layout changes, so an older layout in flash is
 // discarded rather than read as garbage. 0xCA1D added targetAz/targetEl,
-// 0xCA1E added mount, 0xCA1F added the calibration grade.
-static const uint16_t SETTINGS_MAGIC = 0xCA1F;
+// 0xCA1E added mount, 0xCA1F the calibration grade, 0xCA20 the WiFi fields.
+static const uint16_t SETTINGS_MAGIC = 0xCA20;
 
 Settings cal;
 
@@ -29,6 +32,9 @@ void settingsReset() {
   cal.targetAz = 0;
   cal.targetEl = 0;
   cal.mount = mountDefault();
+  cal.wifiOn = true;
+  cal.ssid[0] = '\0';
+  cal.pass[0] = '\0';
 }
 
 // A magic bump is only as good as remembering to do it: forgetting one lets
@@ -43,7 +49,12 @@ static bool settingsSane() {
   for (int i = 0; i < 3; i++) {
     if (badFloat(cal.scale[i]) || cal.scale[i] <= 0.1 || cal.scale[i] > 10.0) return false;
   }
-  return cal.mount < mountCount();
+  if (cal.mount >= mountCount()) return false;
+  // Unterminated strings would run off the end of the struct in every printf
+  // and WiFi.begin() that touches them.
+  if (cal.ssid[sizeof(cal.ssid) - 1] != '\0') return false;
+  if (cal.pass[sizeof(cal.pass) - 1] != '\0') return false;
+  return true;
 }
 
 void settingsBegin() {
@@ -79,6 +90,8 @@ void settingsPrint() {
   Serial.print(F("# azimuth trim "));
   Serial.println(cal.azTrim, 1);
   Serial.printf("# mount %s (beam %s)\n", mountName(cal.mount), mountBeamAxis(cal.mount));
+  Serial.printf("# wifi %s, ssid '%s', %s %s\n", cal.wifiOn ? "on" : "off", cal.ssid,
+                netStateName(), netAddress().c_str());
   Serial.print(F("# target az "));
   Serial.print(cal.targetAz, 1);
   Serial.print(F(" el "));

@@ -7,6 +7,7 @@
 #include "calibration.h"
 #include "config.h"
 #include "orientation.h"
+#include "net.h"
 #include "sensors.h"
 #include "settings.h"
 #include "ui.h"
@@ -89,6 +90,43 @@ static void drawCalResult() {
       oled.print(F("rotate for longer"));
       break;
   }
+}
+
+static void drawWifi() {
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("WIFI"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+
+  oled.setTextSize(2);
+  oled.setCursor(0, 16);
+  oled.print(netStateName());
+
+  oled.setTextSize(1);
+  oled.setCursor(0, 36);
+  oled.print(netAddress());
+  oled.setCursor(0, 46);
+  if (netState() == NET_PORTAL) {
+    oled.print(F("join it to set up"));
+  } else if (netState() == NET_ONLINE) {
+    oled.print(F("satpointer.local"));
+  }
+  oled.setCursor(0, 56);
+  oled.print(cal.wifiOn ? F("press=off hold=back") : F("press=on  hold=back"));
+}
+
+// The loop stops during an update, so without this the device looks hung for
+// the twenty seconds an OTA takes.
+static void drawOta() {
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("OTA UPDATE"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+  oled.setTextSize(2);
+  oled.setCursor(0, 20);
+  oled.printf("%u%%", netOtaPercent());
+  oled.drawRect(0, 44, 128, 10, SSD1306_WHITE);
+  oled.fillRect(0, 44, netOtaPercent() * 128 / 100, 10, SSD1306_WHITE);
 }
 
 static void drawMenu() {
@@ -195,6 +233,12 @@ void displayDraw(bool sensorOk) {
   oled.clearDisplay();
   oled.setTextColor(SSD1306_WHITE);
 
+  if (netOtaActive()) {
+    drawOta();
+    oled.display();
+    return;
+  }
+
   if (!sensorOk) {
     oled.setTextSize(1);
     oled.setCursor(0, 0);
@@ -210,6 +254,8 @@ void displayDraw(bool sensorOk) {
     drawMenu();
   } else if (uiMode() == UI_MOUNT) {
     drawMountPicker();
+  } else if (uiMode() == UI_WIFI) {
+    drawWifi();
   } else {
     drawAngles();
   }

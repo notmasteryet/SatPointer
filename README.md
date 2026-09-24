@@ -98,9 +98,13 @@ a different face of a metal beam changes the surrounding ferrous mass entirely.
 ## Build and flash
 
 ```sh
-pio run -t upload                 # build and flash
+pio run -t upload                 # flash over serial (needs GPIO0 held low)
+pio run -e ota -t upload          # flash over WiFi, no cable and no button
 python3 tools/monitor.py          # serial capture (clears DTR; see below)
 ```
+
+Once WiFi is configured, use the OTA target — serial flashing on this hardware
+means holding the encoder button down through every upload.
 
 Source layout:
 
@@ -148,6 +152,7 @@ Hold the button to open it, turn to choose, press to activate, hold to go back.
 
 | Item | Does |
 |---|---|
+| WiFi | shows link state and address; press toggles the radio |
 | Calibrate | starts magnetometer calibration — press to save, hold to abandon. The verdict (OK / POOR / FAILED, with the score) shows on screen afterwards. |
 | Mount | pick the beam mount; turn to preview, press to apply, hold to cancel |
 | Clear target | zeroes both targets |
@@ -179,6 +184,28 @@ elev:-1.5 az:90.2 daz:54.8 del:30.0 roll:0.8 dip:65.3 B:52.1
 | `roll` | rotation around the beam; positive when the right side is down. This is dish skew. |
 | `dip` | magnetic dip angle. Should hold constant while the device is still; if it moves when it is not being handled, the axis mapping is off. |
 | `B` | field strength in µT. Earth's is 25–65; much more means something magnetic is nearby. |
+
+## Network
+
+On first boot with no stored credentials the device brings up an open access
+point, **SatPointer-setup**. Join it, open any address in a browser, and enter
+your network and password; it saves them and reboots. Or set them over serial
+with `w<ssid> <password>`.
+
+Once joined it is `satpointer.local`, and `pio run -e ota -t upload` flashes it
+wirelessly. If the stored credentials stop working it falls back to the setup
+AP rather than retrying forever — otherwise there would be no way to correct
+them without a cable.
+
+**The radio can be switched off from the menu, and that is not only about
+power.** Transmit current spikes are a changing magnetic field a few
+centimetres from the magnetometer. If you are chasing an azimuth problem, or
+taking a reading you actually care about, turn it off first.
+
+OTA has no password, so anyone on the network can reflash the device. That is
+usually fine on a home LAN; if it is not, set one with
+`ArduinoOTA.setPassword()` in `src/net.cpp` and add `upload_flags` to the `ota`
+environment.
 
 ## Calibration (do once)
 
@@ -220,6 +247,7 @@ Both are saved to EEPROM and survive a restart.
 | `r` | switch raw sensor output on or off |
 | `e` | print encoder pin states, for the wiring check above |
 | `a` | print where every board axis is pointing, for filling in the mount table |
+| `w<ssid> <pass>` | store WiFi credentials |
 | `p` | print stored settings |
 | `z` | erase settings |
 | `h` | help |

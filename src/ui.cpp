@@ -3,12 +3,14 @@
 #include "calibration.h"
 #include "config.h"
 #include "input.h"
+#include "net.h"
 #include "orientation.h"
 #include "settings.h"
 
 enum MenuItem : uint8_t {
   MENU_CALIBRATE,
   MENU_MOUNT,
+  MENU_WIFI,
   MENU_CLEAR_TARGET,
   MENU_EXIT,
   MENU_COUNT,
@@ -17,6 +19,7 @@ enum MenuItem : uint8_t {
 static const char *const MENU_LABELS[MENU_COUNT] = {
   "Calibrate",
   "Mount",
+  "WiFi",
   "Clear target",
   "Exit",
 };
@@ -36,7 +39,9 @@ uint8_t uiMenuCount() { return MENU_COUNT; }
 const char *uiMenuLabel(uint8_t i) { return MENU_LABELS[i < MENU_COUNT ? i : 0]; }
 
 const char *uiMenuValue(uint8_t i) {
-  return i == MENU_MOUNT ? mountName(cal.mount) : nullptr;
+  if (i == MENU_MOUNT) return mountName(cal.mount);
+  if (i == MENU_WIFI) return netStateName();
+  return nullptr;
 }
 uint8_t uiMountPreview() { return mountPreview; }
 
@@ -75,6 +80,9 @@ static void runMenuItem() {
     case MENU_MOUNT:
       mountPreview = cal.mount;
       mode = UI_MOUNT;
+      break;
+    case MENU_WIFI:
+      mode = UI_WIFI;
       break;
     case MENU_CLEAR_TARGET:
       cal.targetAz = 0;
@@ -150,6 +158,11 @@ void uiUpdate() {
       } else if (ev == InputEvent::LongPress) {
         mode = UI_MENU;  // cancelled, nothing applied
       }
+      break;
+
+    case UI_WIFI:
+      if (ev == InputEvent::ShortPress) netSetEnabled(!cal.wifiOn);
+      else if (ev == InputEvent::LongPress) mode = UI_MENU;
       break;
   }
 

@@ -14,6 +14,9 @@ struct Settings {
   float targetAz;     // what we are aiming at, set with the encoder
   float targetEl;
   uint8_t mount;      // index into the mount table in orientation.cpp
+  bool wifiOn;        // radio enabled; off is a legitimate operating mode here
+  char ssid[33];
+  char pass[65];
 };
 
 extern Settings cal;
