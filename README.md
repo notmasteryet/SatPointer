@@ -209,6 +209,31 @@ usually fine on a home LAN; if it is not, set one with
 `ArduinoOTA.setPassword()` in `src/net.cpp` and add `upload_flags` to the `ota`
 environment.
 
+## gpredict
+
+The device emulates hamlib's **rotctld on TCP 4533**, which gpredict drives
+natively. You are the rotator: gpredict sends where to point, reads back where
+the device actually points, and you turn the dish by hand following the
+display. A `NET` marker appears on screen while it is driving, so the targets
+moving on their own is not alarming.
+
+In gpredict, add a rotator with host `satpointer.local` and port `4533`.
+
+| Command | Reply |
+|---|---|
+| `p` / `\get_pos` | azimuth and elevation, one per line |
+| `P az el` / `\set_pos az el` | `RPRT 0` |
+| `S` stop, `K` park | `RPRT 0` — nothing to stop, but refusing would look like a fault |
+| `_` | `SatPointer` |
+| anything else | `RPRT -1`, and logged to serial |
+
+Targets set over the network are **not** written to flash. gpredict sends `P`
+about once a second for the length of a pass, which through the encoder's save
+path would be thousands of flash writes.
+
+There is also a plain-text status at `http://satpointer.local/status`, which is
+the easiest way to see inside the device with no serial cable attached.
+
 ## Calibration (do once)
 
 The magnetometer needs calibrating, because the module headers and anything

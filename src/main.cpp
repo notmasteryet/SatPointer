@@ -16,6 +16,7 @@
 #include "net.h"
 #include "ui.h"
 #include "orientation.h"
+#include "rotctl.h"
 #include "sensors.h"
 #include "settings.h"
 
@@ -45,6 +46,7 @@ void setup() {
 
 void loop() {
   netUpdate();
+  rotctlUpdate();
   commandsUpdate();
   uiUpdate();
 

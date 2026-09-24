@@ -7,6 +7,7 @@
 #include "calibration.h"
 #include "config.h"
 #include "orientation.h"
+#include "rotctl.h"
 #include "net.h"
 #include "sensors.h"
 #include "settings.h"
@@ -190,6 +191,11 @@ static void drawAngles() {
   oled.printf("AZ%6.1f ->%6.1f", az, cal.targetAz);
   oled.setCursor(0, 10);
   oled.printf("EL%6.1f ->%6.1f", o.elev, cal.targetEl);
+  // The targets moving on their own is alarming without knowing why.
+  if (rotctlDriving()) {
+    oled.setCursor(105, 0);
+    oled.print(F("NET"));
+  }
   oled.drawFastHLine(0, 20, 128, SSD1306_WHITE);
 
   // The whole point of the tool: which way to turn, and how far. Show the word

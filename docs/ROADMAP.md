@@ -102,7 +102,7 @@ measured 2026-09-24 on the existing USB-UART supply:
   the module or the supply wiring changes, re-measure — the `W` command toggles
   the radio over serial so the test needs no hands near the sensor.
 
-## 4. gpredict support — rotctld on TCP 4533
+## 4. gpredict support — rotctld on TCP 4533 — DONE 2026-09-24
 
 Emulate hamlib's rotctld, which gpredict drives natively. You are the rotator;
 you turn the dish by hand following the display.
@@ -117,10 +117,18 @@ you turn the dish by hand following the display.
 
 Non-blocking, one client, parsed line by line.
 
-**Get this right up front:** the current code persists the target to flash 2 s
-after it changes. gpredict sends `P` continuously while tracking a pass — that
-is thousands of flash writes per pass and a dead sector. **Network-set targets
-must be RAM-only; only encoder-set targets persist.**
+**The flash-wear trap, handled:** the encoder persists its target 2 s after it
+changes, and gpredict sends `P` continuously while tracking a pass. Network
+targets therefore bypass that path entirely. Verified on hardware: 47 position
+sets and 47 reads over 25 s produced zero flash writes.
+
+Also implemented: `S` and `K` answer `RPRT 0` rather than refusing — there is
+nothing to stop when a human is the drive train, but refusing would make
+gpredict think the rotator is broken. Unhandled commands answer `RPRT -1` and
+are logged, so the first real gpredict session reports anything still missing.
+
+Not yet done: tested against a synthetic client speaking the protocol, **not
+against gpredict itself.**
 
 ## 5. Guidance graphics
 
@@ -164,7 +172,7 @@ Serial commands stay as the no-WiFi fallback.
 
 1. ~~Refactor~~, ~~mount orientation~~, ~~calibration grading~~ — done
 2. ~~WiFi + OTA~~ — done; the supply needed no work after all
-3. rotctld
+3. ~~rotctld~~ — done, pending a test against real gpredict
 4. HTTP config page
 5. Guidance graphics
 6. Ellipsoid calibration fit — **deprioritised 2026-09-23**

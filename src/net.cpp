@@ -5,6 +5,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
+#include "orientation.h"
+#include "rotctl.h"
 #include "settings.h"
 
 static const char *HOSTNAME = "satpointer";
@@ -52,8 +54,59 @@ static const char PORTAL_PAGE[] PROGMEM =
     "<label>Password</label><input name=p type=password maxlength=64>"
     "<button>Save and reboot</button></form>";
 
+// Plain text on purpose: with the serial cable gone this is the only way to
+// see inside the device, and it wants to be trivially greppable rather than
+// pretty. The browsable version is the phase 4 config page.
+static void handleStatus() {
+  Angles o;
+  bool fix = orientationAngles(o);
+  String r;
+  r.reserve(420);
+  r += "state "; r += netStateName(); r += '\n';
+  r += "ip "; r += WiFi.localIP().toString(); r += '\n';
+  r += "ssid "; r += cal.ssid; r += '\n';
+  r += "mount "; r += mountName(cal.mount); r += ' '; r += mountBeamAxis(cal.mount); r += '\n';
+  r += "cal "; r += (cal.magCal ? "ok" : (cal.calSpread > 0 ? "poor" : "none"));
+  r += " sd "; r += String(cal.calSpread, 2);
+  r += " field "; r += String(cal.calField, 1); r += '\n';
+  r += "aztrim "; r += String(cal.azTrim, 1); r += '\n';
+  if (fix) {
+    r += "az "; r += String(trimmedAz(o), 1); r += '\n';
+    r += "el "; r += String(o.elev, 1); r += '\n';
+    r += "roll "; r += String(o.roll, 1); r += '\n';
+    r += "dip "; r += String(o.dip, 1); r += '\n';
+    r += "field "; r += String(o.b, 1); r += '\n';
+  } else {
+    r += "fix none\n";
+  }
+  r += "target "; r += String(cal.targetAz, 1); r += ' '; r += String(cal.targetEl, 1); r += '\n';
+  r += "rotctl "; r += (rotctlConnected() ? "connected" : "idle");
+  r += rotctlDriving() ? " driving\n" : "\n";
+  r += "uptime "; r += millis() / 1000; r += '\n';
+  r += "heap "; r += ESP.getFreeHeap(); r += '\n';
+  server.send(200, "text/plain", r);
+}
+
 static void handleRoot() {
-  server.send_P(200, "text/html", PORTAL_PAGE);
+  if (state == NET_PORTAL) {
+    server.send_P(200, "text/html", PORTAL_PAGE);
+  } else {
+    handleStatus();
+  }
+}
+
+// Registered once. A portal -> online -> portal cycle would otherwise add a
+// second handler for "/" and the first one would win forever.
+static bool httpUp = false;
+static void handleSave();  // defined below, beside the portal form
+
+static void startHttp() {
+  if (httpUp) return;
+  httpUp = true;
+  server.on("/", handleRoot);
+  server.on("/status", handleStatus);
+  server.on("/save", HTTP_POST, handleSave);
+  server.begin();
 }
 
 static void handleSave() {
@@ -72,10 +125,8 @@ static void handleSave() {
 static void startPortal() {
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID);
-  server.on("/", handleRoot);
-  server.on("/save", HTTP_POST, handleSave);
-  server.begin();
   state = NET_PORTAL;
+  startHttp();
   Serial.printf("# wifi: no credentials, AP '%s' at %s\n", AP_SSID,
                 WiFi.softAPIP().toString().c_str());
 }
@@ -103,8 +154,10 @@ static void startServices() {
   });
   ArduinoOTA.begin();
 
+  startHttp();
   if (MDNS.begin(HOSTNAME)) {
     MDNS.addService("arduino", "tcp", 8266);
+    MDNS.addService("http", "tcp", 80);
     Serial.printf("# mdns: %s.local\n", HOSTNAME);
   }
 }
@@ -161,6 +214,7 @@ void netUpdate() {
       }
       ArduinoOTA.handle();
       MDNS.update();
+      server.handleClient();
       return;
 
     case NET_PORTAL:
