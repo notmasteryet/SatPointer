@@ -189,6 +189,11 @@ void netSetEnabled(bool on) {
 }
 
 void netSetCredentials(const char *ssid, const char *pass) {
+  // Zero first: strlcpy leaves the bytes past its terminator untouched, so a
+  // shorter credential would otherwise keep the tail of the previous one in
+  // flash.
+  memset(cal.ssid, 0, sizeof(cal.ssid));
+  memset(cal.pass, 0, sizeof(cal.pass));
   strlcpy(cal.ssid, ssid, sizeof(cal.ssid));
   strlcpy(cal.pass, pass, sizeof(cal.pass));
   settingsSave();

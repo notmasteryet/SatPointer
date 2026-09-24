@@ -33,8 +33,8 @@ void settingsReset() {
   cal.targetEl = 0;
   cal.mount = mountDefault();
   cal.wifiOn = true;
-  cal.ssid[0] = '\0';
-  cal.pass[0] = '\0';
+  memset(cal.ssid, 0, sizeof(cal.ssid));
+  memset(cal.pass, 0, sizeof(cal.pass));
 }
 
 // A magic bump is only as good as remembering to do it: forgetting one lets
@@ -51,9 +51,12 @@ static bool settingsSane() {
   }
   if (cal.mount >= mountCount()) return false;
   // Unterminated strings would run off the end of the struct in every printf
-  // and WiFi.begin() that touches them.
-  if (cal.ssid[sizeof(cal.ssid) - 1] != '\0') return false;
-  if (cal.pass[sizeof(cal.pass) - 1] != '\0') return false;
+  // and WiFi.begin() that touches them. The test is that a NUL exists at all,
+  // not that the final byte is one: strlcpy terminates within the buffer and
+  // leaves whatever was after it alone, so requiring a NUL in the last byte
+  // rejected every perfectly good credential and wiped it on the next boot.
+  if (!memchr(cal.ssid, '\0', sizeof(cal.ssid))) return false;
+  if (!memchr(cal.pass, '\0', sizeof(cal.pass))) return false;
   return true;
 }
 
