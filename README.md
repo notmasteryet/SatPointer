@@ -204,11 +204,12 @@ Verified on hardware 2026-09-22: both sensors read (field 46 µT, well inside
 Earth's range), EEPROM load/store works, the encoder counts and its target
 persists, and the button toggles the edited axis cleanly.
 
-The phase-1 refactor and the beam mount setting (2026-09-23) are **built but
-not yet run on hardware** — the board was disconnected. The mount remap maths
-is verified on the host: each mount maps its beam axis onto canonical +X with a
-right-handed frame, and `right` is the exact identity, so behaviour in the
-orientation the POC ran in is unchanged.
+Phase-1 refactor and beam mount verified on hardware 2026-09-23: all four
+mounts produce the angles geometry requires (beam reversed flips elevation and
+swings azimuth 180°, the side face reads ~0° elevation and 90° round, the
+bottom face reads 90° below the front), cycling returns to the start value, and
+dip and field strength — both rotation invariants — hold constant across all
+four, so the remap does not corrupt the magnetic vector.
 
 Not yet verified:
 
