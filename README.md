@@ -256,11 +256,11 @@ Not yet verified:
   `PIN_ENC_B`.
 - **The OLED rendering.** It enumerates at 0x3C and `display.begin()` succeeds,
   but nobody has confirmed the layout looks right on the panel.
-- **Calibration quality.** One calibration has been run and stored, but it was
-  done with the UART unplugged and then measured with it plugged in, and scored
-  badly (|B| varying 11% peak-to-peak). It needs redoing in the final cable
-  configuration. The grading that would have caught this is now in the firmware
-  but has not yet graded a real attempt — only simulated ones.
+- **Calibration quality.** Grading works on real hardware, but no calibration
+  has passed it yet: two attempts scored sd 4.56% and 4.4% against a 3%
+  threshold, so the status slot reads `BAD 4%` and azimuth is not trusted.
+  Landing twice in the same place suggests the min/max model is the limit
+  rather than the rotation — see the ellipsoid note in `docs/ROADMAP.md`.
 
 ## Limitations
 

@@ -62,8 +62,14 @@ constant.
   that catches an accelerometer/magnetometer axis-mapping mistake, which |B|
   alone cannot see.
 - Keep the per-axis coverage bars; add a pass/fail on |B| stability at the end.
-- Consider an ellipsoid fit instead of min/max — noticeably better and
-  affordable on this chip. The 11% spread above is with min/max.
+- **An ellipsoid fit is probably now required, not optional.** Two graded
+  attempts on 2026-09-23 scored sd 4.56% and 4.4% against a 3% threshold.
+  Landing twice in the same place is a plateau rather than scatter, which
+  points at the model rather than the rotation: min/max fits a diagonal
+  correction only, so it cannot represent cross-axis soft iron. Simulated
+  cross-axis distortion scores 5.4% — the same order as what the hardware is
+  producing. A third careful attempt would confirm it before spending the code;
+  if it lands near 4.5% again, stop rotating and fit an ellipsoid.
 - **Calibrate in the exact final configuration, cables included.** The first
   real calibration was done with the UART unplugged (a tether fights the
   rotation) and then measured with it plugged in; hard-iron offsets are
