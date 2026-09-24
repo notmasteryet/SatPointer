@@ -3,11 +3,10 @@
 Hardware POC is done (see the Status section of the main README). This is the
 software we want next, and the decisions already made about it.
 
-## 1. Mount orientation
+## 1. Mount orientation — DONE 2026-09-23 (built, not yet run on hardware)
 
-The device clamps to the beam in one of four ways. Today the pointing axis is
-hardcoded to forward (+X) at `src/satpointer.cpp:34`; it becomes a runtime
-setting.
+The device clamps to the beam in one of four ways. Was hardcoded to forward
+(+X); now a runtime setting cycled with `m`, stored in `Settings.mount`.
 
 Four options, spanning all three board axes, with X used both ways for
 convenience:
@@ -23,23 +22,17 @@ Axes are the **board frame** the code already defines — X = the GY-521's
 printed +X arrow, Y = left, Z = up — not raw chip axes; the GY-271 is already
 remapped onto that frame.
 
-**Implementation:** add one remap step that rotates the sensor vectors into the
-canonical forward/left/up frame, so `computeAngles()` runs unchanged with
-forward still `(1,0,0)`. The verified fusion maths is not touched; the mount
-becomes a table:
+**As built:** `toCanonical()` in `src/orientation.cpp` rotates the sensor
+vectors into a frame where the beam is +X, so `orientationAngles()` runs
+unchanged with the beam still `(1,0,0)`. The fusion maths was not touched.
+Verified on the host: every mount maps its beam axis onto canonical +X with a
+right-handed frame, and `right` is the exact identity, so the orientation the
+POC ran in behaves bit-for-bit as before.
 
-```c
-struct Mount { const char *name; int8_t beam; int8_t up; };
-// ±1/±2/±3 = board ±X/±Y/±Z, same encoding as ACC_AXIS
-const Mount MOUNTS[] = {
-  { "top",   +2, +3 },
-  { "down",  -3, +1 },
-  { "left",  -1, +3 },
-  { "right", +1, +3 },
-};
-```
+Changing mount calls `orientationReset()` — the low-pass filter holds vectors
+in the old frame and blending across the change would drift through nonsense.
 
-**Open:** the `up` column. The beam axis fixes azimuth and elevation, but roll
+**Still open:** the `up` column. The beam axis fixes azimuth and elevation, but roll
 needs a second reference, and roll is dish skew. The values above are merely
 perpendicular to the beam — they will produce a roll number, not necessarily
 zero when the dish is level. Likely answer is a per-mount roll offset zeroed in
@@ -48,8 +41,8 @@ which also absorbs clamp slop no table can predict.
 
 **Couples to calibration:** hard/soft-iron correction is in sensor frame, so it
 survives moving the sensor relative to itself — but moving to a different face
-of a metal beam changes the surrounding ferrous mass entirely. Changing mount
-should prompt for recalibration, and profiles probably want storing per mount.
+of a metal beam changes the surrounding ferrous mass entirely. Changing mount prints a recalibration warning; storing a
+profile per mount is still to do.
 
 ## 2. Calibration
 
@@ -136,15 +129,16 @@ Serial commands stay as the no-WiFi fallback.
 
 ## Cross-cutting
 
-- **Split `satpointer.cpp` before WiFi lands, not after** — sensors /
-  orientation / ui / net / settings. It is ~600 lines now and about to double.
+- ~~Split `satpointer.cpp` before WiFi lands~~ — done 2026-09-23. Now
+  config / sensors / orientation / calibration / display / input / commands /
+  settings, with `main.cpp` holding only the loop scheduling.
 - **Settings outgrow the EEPROM struct.** The magic number already needed one
   bump. JSON in flash is more forgiving to schema changes and maps directly
   onto the config form.
 
 ## Sequencing
 
-1. Refactor, mount orientation, calibration quality — no WiFi, no power risk
+1. ~~Refactor~~, ~~mount orientation~~, calibration quality — no WiFi, no power risk
 2. Fix the supply, then WiFi + OTA (OTA early makes everything after painless)
 3. rotctld
 4. HTTP config page

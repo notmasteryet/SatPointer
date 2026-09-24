@@ -7,7 +7,8 @@ and tells you which way to turn to reach a target you dial in.
 - **elevation**: angle above the horizon, from −90° to +90°
 - **roll**: rotation around the pointing direction
 
-The pointing direction is the **+X arrow printed on the GY-521**.
+The pointing direction is the beam, which is whichever device axis the
+**beam mount** setting names — by default the +X arrow printed on the GY-521.
 
 ![board](images/board.jpg)
 
@@ -58,23 +59,59 @@ Boot pins on the bare module: EN (CH_PD) → 3.3V, GPIO15 → GND, GPIO2 floatin
 Use a 3.3V adapter that can source ~300mA peak; cheap breakouts brown out
 mid-flash.
 
-**Mounting:** both sensor modules lie flat, with the GY-271's **Y** arrow
-pointing the same way as the GY-521's **X** arrow. If you mount them
-differently, change `ACC_AXIS` / `MAG_AXIS` at the top of `src/satpointer.cpp`.
+**Sensor mounting:** both sensor modules lie flat on the board, with the
+GY-271's **Y** arrow pointing the same way as the GY-521's **X** arrow. That
+relationship is fixed in `ACC_AXIS` / `MAG_AXIS` in `src/orientation.cpp`;
+change it only if you rearrange the modules relative to each other.
+
+**Beam mounting** — which way round the whole device clamps to the beam — is a
+runtime setting, see below.
 
 Some GY-271 boards carry an HMC5883L (0x1E) or a QMC5883P (0x2C) instead, which
-this code does not support. `pio run -e i2cprobe -t upload` identifies which one
-is fitted.
+this code does not support. The I2C scan printed at every boot names whichever
+is fitted and flags anything unexpected on the bus.
+
+## Beam mount
+
+The beam points along one of four device axes. Press `m` to cycle; the current
+one shows in the status row and in `p` output.
+
+| Mount | Beam axis | Device orientation |
+|---|---|---|
+| `top` | +Y | beam out the left face |
+| `left` | −X | beam out the back |
+| `right` | +X | beam out the front (default) |
+| `down` | −Z | beam out the bottom, screen faces up |
+
+Axes are the board frame: X = the GY-521's printed +X arrow, Y = left, Z = up.
+Internally the sensor vectors are rotated into a canonical frame where the beam
+is +X, so the fusion maths never sees the mount setting — `right` is the exact
+identity.
+
+**Changing the mount means recalibrating.** Hard/soft-iron correction is in
+sensor frame and survives moving the sensor relative to itself, but clamping to
+a different face of a metal beam changes the surrounding ferrous mass entirely.
 
 ## Build and flash
 
 ```sh
-pio run -t upload                 # the application
-pio run -e i2cprobe -t upload     # scan the bus, identify each chip
-pio run -e oled -t upload         # SSD1306 only
-pio run -e blink -t upload        # LED + chip info only
+pio run -t upload                 # build and flash
 python3 tools/monitor.py          # serial capture (clears DTR; see below)
 ```
+
+Source layout:
+
+| File | Holds |
+|---|---|
+| `main.cpp` | setup/loop, sample and draw scheduling |
+| `config.h` | pins, addresses, timing constants |
+| `sensors.*` | I2C bus, MPU6050 and QMC5883L reads, boot scan |
+| `orientation.*` | mount table, frame remap, sensor fusion |
+| `calibration.*` | magnetometer min/max calibration |
+| `display.*` | SSD1306 rendering |
+| `input.*` | encoder and button |
+| `commands.*` | serial commands and the data line |
+| `settings.*` | the persisted `Settings` struct |
 
 `upload_port` is pinned in `platformio.ini`. For a 0.91" panel change
 `-D OLED_H=64` to `32`.
@@ -114,11 +151,11 @@ elev:-1.5 az:90.2 daz:54.8 del:30.0 roll:0.8 dip:65.3 B:52.1
 
 | Field | Meaning |
 |---|---|
-| `elev` | elevation of the +X arrow |
-| `az` | true azimuth of the +X arrow |
+| `elev` | elevation of the beam |
+| `az` | true azimuth of the beam |
 | `daz` | degrees to turn to reach the target; positive = clockwise |
 | `del` | degrees to raise to reach the target |
-| `roll` | rotation around +X; positive when the right side is down |
+| `roll` | rotation around the beam; positive when the right side is down. This is dish skew. |
 | `dip` | magnetic dip angle. It should stay the same however you turn the board. If it changes, the calibration or axis mapping is off. |
 | `B` | field strength in µT. Earth's is 25–65; much more means something magnetic is nearby. |
 
@@ -132,7 +169,7 @@ should not be trusted.
 1. **Magnetometer:** send `c`, slowly rotate the board through *every*
    orientation for 30–60 seconds (including upside down), then send `c` again.
    The display shows the swing collected on each axis while this runs.
-2. **North:** point the +X arrow at a known true bearing and send it. `n90`
+2. **North:** point the beam at a known true bearing and send it. `n90`
    means it points east, `n` means north. This also absorbs magnetic
    declination.
 
@@ -141,7 +178,8 @@ Both are saved to EEPROM and survive a restart.
 | Command | Action |
 |---|---|
 | `c` | start / finish magnetometer calibration |
-| `nDEG` | the +X arrow is currently pointing at true bearing DEG |
+| `nDEG` | the beam is currently pointing at true bearing DEG |
+| `m` | cycle the beam mount (top / left / right / down) |
 | `r` | switch raw sensor output on or off |
 | `e` | print encoder pin states, for the wiring check above |
 | `p` | print stored settings |
@@ -156,7 +194,7 @@ magnetometer gives the magnetic field (**M**). From those two vectors:
 - **East** = D × M
 - **North** = East × D
 
-Taking the +X arrow's components along north, east and down gives azimuth
+Taking the beam's components along north, east and down gives azimuth
 `atan2(E, N)` and elevation `asin(−D)`. This works however the board is tilted.
 Both sensor vectors are smoothed with a simple low-pass filter.
 
@@ -165,6 +203,12 @@ Both sensor vectors are smoothed with a simple low-pass filter.
 Verified on hardware 2026-09-22: both sensors read (field 46 µT, well inside
 Earth's range), EEPROM load/store works, the encoder counts and its target
 persists, and the button toggles the edited axis cleanly.
+
+The phase-1 refactor and the beam mount setting (2026-09-23) are **built but
+not yet run on hardware** — the board was disconnected. The mount remap maths
+is verified on the host: each mount maps its beam axis onto canonical +X with a
+right-handed frame, and `right` is the exact identity, so behaviour in the
+orientation the POC ran in is unchanged.
 
 Not yet verified:
 
