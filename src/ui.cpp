@@ -11,6 +11,7 @@ enum MenuItem : uint8_t {
   MENU_CALIBRATE,
   MENU_MOUNT,
   MENU_WIFI,
+  MENU_SCREEN,
   MENU_CLEAR_TARGET,
   MENU_EXIT,
   MENU_COUNT,
@@ -20,6 +21,7 @@ static const char *const MENU_LABELS[MENU_COUNT] = {
   "Calibrate",
   "Mount",
   "WiFi",
+  "Screen",
   "Clear target",
   "Exit",
 };
@@ -28,12 +30,14 @@ static UiMode mode = UI_MAIN;
 static bool editEl = false;
 static uint8_t menuIndex = 0;
 static uint8_t mountPreview = 0;
+static bool graphicScreen = true;
 
 static bool targetDirty = false;
 static unsigned long targetTouched = 0;
 
 UiMode uiMode() { return mode; }
 bool uiEditEl() { return editEl; }
+bool uiGraphicScreen() { return graphicScreen; }
 uint8_t uiMenuIndex() { return menuIndex; }
 uint8_t uiMenuCount() { return MENU_COUNT; }
 const char *uiMenuLabel(uint8_t i) { return MENU_LABELS[i < MENU_COUNT ? i : 0]; }
@@ -41,6 +45,7 @@ const char *uiMenuLabel(uint8_t i) { return MENU_LABELS[i < MENU_COUNT ? i : 0];
 const char *uiMenuValue(uint8_t i) {
   if (i == MENU_MOUNT) return mountName(cal.mount);
   if (i == MENU_WIFI) return netStateName();
+  if (i == MENU_SCREEN) return graphicScreen ? "graphic" : "numbers";
   return nullptr;
 }
 uint8_t uiMountPreview() { return mountPreview; }
@@ -83,6 +88,9 @@ static void runMenuItem() {
       break;
     case MENU_WIFI:
       mode = UI_WIFI;
+      break;
+    case MENU_SCREEN:
+      graphicScreen = !graphicScreen;
       break;
     case MENU_CLEAR_TARGET:
       cal.targetAz = 0;

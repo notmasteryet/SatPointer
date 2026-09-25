@@ -128,7 +128,20 @@ button (or ground GPIO0) while the board resets, upload, then release it.
 
 ## Use
 
-The display shows current and target angles, and what to do about the
+The display has two screens, swapped from the menu under **Screen**.
+
+The graphic one is the default: a compass seen from above and the same beam
+seen from the side, each drawn as an arm with the device as a crossbar on it,
+plus an arrowhead for which way to turn. The yellow strip along the top carries
+how far to go, the current angles, and whether the calibration can be trusted.
+
+`tools/simulate/run.sh` renders that screen on a host by compiling the real
+`src/guidance.cpp` against a mock Adafruit_GFX. Use it when changing the
+layout — the panel is two-colour, the top 16 rows being yellow and the rest
+cyan with a gap between, so nothing may straddle row 16, and that is far easier
+to check in a terminal than by flashing and squinting.
+
+The numeric screen shows current and target angles, and what to do about the
 difference:
 
 ```

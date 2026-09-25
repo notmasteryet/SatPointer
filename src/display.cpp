@@ -6,6 +6,7 @@
 
 #include "calibration.h"
 #include "config.h"
+#include "guidance.h"
 #include "orientation.h"
 #include "rotctl.h"
 #include "net.h"
@@ -173,6 +174,33 @@ static void drawMountPicker() {
   oled.print(F("press=set hold=cancel"));
 }
 
+// Everything the guidance screen needs, gathered here so guidance.cpp stays
+// free of globals and can be rendered on a host.
+static void drawGuidanceScreen() {
+  static char status[10];
+  Angles o;
+  Guidance d{};
+  d.fix = orientationAngles(o);
+  if (d.fix) {
+    d.az = trimmedAz(o);
+    d.el = o.elev;
+    d.dAz = azError(d.az);
+    d.dEl = cal.targetEl - o.elev;
+    if (fieldSuspect(o.b)) strncpy(status, "MAG!", sizeof(status));
+    else if (cal.magCal) snprintf(status, sizeof(status), "ok %.0f%%", cal.calSpread);
+    else if (cal.calSpread > 0) snprintf(status, sizeof(status), "BAD %.0f%%", cal.calSpread);
+    else strncpy(status, "NO CAL", sizeof(status));
+  } else {
+    strncpy(status, "NO FIX", sizeof(status));
+  }
+  status[sizeof(status) - 1] = '\0';
+  d.targetAz = cal.targetAz;
+  d.targetEl = cal.targetEl;
+  d.status = status;
+  d.net = rotctlDriving();
+  drawGuidance(oled, d);
+}
+
 static void drawAngles() {
   Angles o;
   if (!orientationAngles(o)) {
@@ -262,6 +290,8 @@ void displayDraw(bool sensorOk) {
     drawMountPicker();
   } else if (uiMode() == UI_WIFI) {
     drawWifi();
+  } else if (uiGraphicScreen()) {
+    drawGuidanceScreen();
   } else {
     drawAngles();
   }

@@ -26,3 +26,8 @@ uint8_t uiMountPreview();  // mount highlighted in UI_MOUNT, not yet applied
 // Applies a mount and does the bookkeeping that must go with it. Shared with
 // the serial 'm' command so there is only one place that gets it right.
 void uiSetMount(uint8_t m);
+
+// Which main screen to draw. Deliberately not persisted: adding a field to
+// Settings costs a magic bump, and a magic bump costs the user their
+// calibration. Defaults to the graphic screen on every boot.
+bool uiGraphicScreen();

@@ -130,18 +130,31 @@ are logged, so the first real gpredict session reports anything still missing.
 Not yet done: tested against a synthetic client speaking the protocol, **not
 against gpredict itself.**
 
-## 5. Guidance graphics
+## 5. Guidance graphics — DONE 2026-09-24
 
-A line-drawn beam-and-device glyph with a curved arrow for which way to rotate.
-Line-drawn, not bitmap — Adafruit_GFX cannot rotate bitmaps, so the glyph is
-computed from the angle.
+Two line-drawn views of the same beam: a compass from above and the same arm
+from the side, each with the device as a crossbar on it and an arrowhead for
+which way to turn. Line-drawn, not bitmap, since Adafruit_GFX cannot rotate
+bitmaps.
 
-Worth pairing with a **bullseye**: current position as a dot, target at centre,
-both axes at once. Drive the dot to the middle. That reads faster than two
-numbers when you are up a ladder with one hand on the dish.
+**The panel is two-colour** — top 16 rows yellow, the remaining 48 cyan, with a
+physical gap between them. Nothing may straddle that line, so the yellow strip
+is the header (how far to go, current angles, cal state) and the two views sit
+side by side in the cyan band below. This was found by being told, after a
+first layout had the compass straddling the boundary.
 
-Also: **roll is dish skew** — LNB polarisation angle. It may deserve promoting
-from a diagnostic to a first-class target alongside azimuth and elevation.
+Built against `Adafruit_GFX` and rendered on the host by `tools/simulate`,
+which compiles the shipping source against a mock. That caught two layout bugs
+before any flash: a baseline elevation pivot that drew off the panel for any
+negative elevation, and the north label touching the compass rim. **Worth
+keeping — nobody working on this can see the screen.**
+
+The bullseye idea was dropped: with a compass and a side view there is no room,
+and those two say the same thing more literally.
+
+Still not done: **roll as a target.** Roll is dish skew, the LNB polarisation
+angle, and is still only a diagnostic. It needs the per-mount up reference from
+section 1 before a roll target would mean anything.
 
 ## 6. HTTP config page — DONE 2026-09-24
 
@@ -183,7 +196,7 @@ network.
 2. ~~WiFi + OTA~~ — done; the supply needed no work after all
 3. ~~rotctld~~ — done, pending a test against real gpredict
 4. ~~HTTP config page~~ — done
-5. Guidance graphics
+5. ~~Guidance graphics~~ — done
 6. Ellipsoid calibration fit — **deprioritised 2026-09-23**
 
 The ellipsoid fit was the natural continuation of phase 1, but it is a
