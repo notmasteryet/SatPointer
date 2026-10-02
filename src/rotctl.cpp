@@ -39,10 +39,12 @@ static void handleLine(String cmd) {
         client.print(F("RPRT -1\n"));
         return;
       }
-      client.print(String(trimmedAz(o), 1));
-      client.print('\n');
-      client.print(String(o.elev, 1));
-      client.print('\n');
+      // One write, not four: with Nagle off each print is its own packet, and
+      // gpredict does a single recv() and wants both lines in it - a reply
+      // split after the azimuth shows as ERROR when you press Engage.
+      char reply[24];
+      snprintf(reply, sizeof reply, "%.1f\n%.1f\n", trimmedAz(o), o.elev);
+      client.write(reply, strlen(reply));
       return;
     }
 
