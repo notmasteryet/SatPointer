@@ -15,6 +15,11 @@ struct Guidance {
   float dAz, dEl;        // how far to go; dAz positive means turn clockwise
   const char *status;    // cal state, shown bottom right
   bool net;              // a gpredict client is driving the target
+  double freqHz;         // gpredict's radio frequency; 0 = none, show status
 };
 
 void drawGuidance(Adafruit_GFX &g, const Guidance &d);
+
+// MHz with as many decimals as fit in maxChars, trailing zeros dropped, so
+// 145.89, 145.8912 and 10489.55 all fit the same slot.
+void formatMHz(char *buf, size_t size, double hz, int maxChars);

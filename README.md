@@ -244,6 +244,24 @@ Targets set over the network are **not** written to flash. gpredict sends `P`
 about once a second for the length of a pass, which through the encoder's save
 path would be thousands of flash writes.
 
+### Radio frequency — rigctld on TCP 4532
+
+It also emulates **rigctld on TCP 4532**, where gpredict's radio controller
+connects, so the frequency gpredict tunes to, Doppler included, is shown on the
+display. There is no radio behind it. In gpredict, add a radio with host
+`satpointer.local` and port `4532`.
+
+The frequency takes the top-right slot that otherwise shows calibration status
+(bottom-right on the numbers screen), in MHz with as many decimals as fit:
+trailing zeros dropped: `145.89`, `145.8123`, `10489.55`. It is the main VFO (VFO A), which is the downlink in
+every gpredict mode except a TX-only radio. It clears when gpredict disconnects.
+
+`F`/`f` frequency, `V`/`v` VFO, `I`/`i` split TX frequency, `S`/`s` split,
+`M`/`m` mode, `T`/`t` PTT (always off), `\get_dcd`, `\chk_vfo`, with their long
+forms. Reads return what was set, which is what gpredict checks to tell whether
+the knob was turned. Anything else is answered `RPRT -1` and logged to serial
+as `# rigctl: unhandled '...'`. `/status` shows the current frequency.
+
 ## Config page
 
 `http://satpointer.local` is where the fiddly settings live, rather than on a

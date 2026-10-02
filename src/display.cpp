@@ -8,6 +8,7 @@
 #include "config.h"
 #include "guidance.h"
 #include "orientation.h"
+#include "rigctl.h"
 #include "rotctl.h"
 #include "net.h"
 #include "sensors.h"
@@ -198,6 +199,7 @@ static void drawGuidanceScreen() {
   d.targetEl = cal.targetEl;
   d.status = status;
   d.net = rotctlDriving();
+  d.freqHz = rigctlFreq();
   drawGuidance(oled, d);
 }
 
@@ -251,7 +253,17 @@ static void drawAngles() {
   oled.setCursor(50, 54);
   oled.print(mountName(cal.mount));
   oled.setCursor(86, 54);
-  if (fieldSuspect(o.b)) {
+  if (rigctlFreq() > 0) {
+    char mhz[16];
+    formatMHz(mhz, sizeof mhz, rigctlFreq(), 7);
+    // Inverted to match the guidance screen.
+    int16_t x = 128 - strlen(mhz) * 6;
+    oled.fillRect(x - 1, 54, 128 - x + 1, 8, SSD1306_WHITE);
+    oled.setCursor(x, 54);
+    oled.setTextColor(SSD1306_BLACK);
+    oled.print(mhz);
+    oled.setTextColor(SSD1306_WHITE);
+  } else if (fieldSuspect(o.b)) {
     oled.print(F("MAG!"));
   } else if (cal.magCal) {
     oled.printf("ok %.0f%%", cal.calSpread);

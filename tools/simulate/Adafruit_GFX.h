@@ -13,11 +13,12 @@ class Adafruit_GFX {
  public:
   static const int W = 128, H = 64;
   uint8_t px[H][W] = {};
-  int cx = 0, cy = 0, tsize = 1;
+  int cx = 0, cy = 0, tsize = 1, tcolor = 1;
   std::vector<std::string> texts;   // what was printed and where
 
-  void pixel(int x, int y) { if (x >= 0 && x < W && y >= 0 && y < H) px[y][x] = 1; }
-  void drawPixel(int x, int y, uint16_t) { pixel(x, y); }
+  // Colour 0 clears, so inverted text shows up as gaps in a filled block.
+  void pixel(int x, int y, uint16_t c = 1) { if (x >= 0 && x < W && y >= 0 && y < H) px[y][x] = c ? 1 : 0; }
+  void drawPixel(int x, int y, uint16_t c) { pixel(x, y, c); }
 
   void drawLine(int x0, int y0, int x1, int y1, uint16_t) {
     int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
@@ -36,8 +37,8 @@ class Adafruit_GFX {
     drawFastHLine(x, y, w, c); drawFastHLine(x, y + h - 1, w, c);
     drawFastVLine(x, y, h, c); drawFastVLine(x + w - 1, y, h, c);
   }
-  void fillRect(int x, int y, int w, int h, uint16_t) {
-    for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) pixel(x + i, y + j);
+  void fillRect(int x, int y, int w, int h, uint16_t c) {
+    for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) pixel(x + i, y + j, c);
   }
   void drawCircle(int x0, int y0, int r, uint16_t) {
     for (double a = 0; a < 6.2832; a += 0.02)
@@ -61,16 +62,17 @@ class Adafruit_GFX {
   }
 
   void setTextSize(int s) { tsize = s; }
-  void setTextColor(uint16_t) {}
+  void setTextColor(uint16_t c) { tcolor = c; }
   void setCursor(int x, int y) { cx = x; cy = y; }
   // Text is drawn as its real 6x8 footprint so overlap and overflow show up.
   void emit(const std::string &s) {
     char buf[80];
-    snprintf(buf, sizeof(buf), "(%3d,%2d) w=%2d \"%s\"", cx, cy, (int)s.size()*6*tsize, s.c_str());
+    snprintf(buf, sizeof(buf), "(%3d,%2d) w=%2d \"%s\"%s", cx, cy, (int)s.size()*6*tsize, s.c_str(),
+             tcolor ? "" : " inverted");
     texts.push_back(buf);
     for (size_t i = 0; i < s.size(); i++)
       for (int j = 0; j < 7*tsize; j++)
-        for (int k = 0; k < 5*tsize; k++) pixel(cx + i*6*tsize + k, cy + j);
+        for (int k = 0; k < 5*tsize; k++) pixel(cx + i*6*tsize + k, cy + j, tcolor);
     cx += s.size() * 6 * tsize;
   }
   void print(const char *s) { emit(s); }

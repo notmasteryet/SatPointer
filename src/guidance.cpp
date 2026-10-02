@@ -111,10 +111,30 @@ static void drawElevation(Adafruit_GFX &g, const Guidance &d) {
   }
 }
 
-static void rightAt(Adafruit_GFX &g, int16_t y, const char *s) {
+void formatMHz(char *buf, size_t size, double hz, int maxChars) {
+  for (int dec = 4; dec >= 0; dec--) {
+    snprintf(buf, size, "%.*f", dec, hz / 1e6);
+    if ((int)strlen(buf) <= maxChars) break;
+  }
+  // 145.89 rather than 145.8900; a Doppler-shifted 145.8912 keeps its digits.
+  char *dot = strchr(buf, '.');
+  if (!dot) return;
+  char *end = buf + strlen(buf) - 1;
+  while (end > dot + 1 && *end == '0') *end-- = '\0';
+}
+
+static void rightAt(Adafruit_GFX &g, int16_t y, const char *s, bool inverted = false) {
   if (!s || !*s) return;
-  g.setCursor(W - (int16_t)strlen(s) * 6, y);
+  int16_t x = W - (int16_t)strlen(s) * 6;
+  if (inverted) {
+    // Each glyph cell already carries a blank column on its right and a blank
+    // row below, so one extra column on the left balances the margin.
+    g.fillRect(x - 1, y, W - x + 1, 8, 1);
+    g.setTextColor(0);
+  }
+  g.setCursor(x, y);
   g.print(s);
+  if (inverted) g.setTextColor(1);
 }
 
 // The yellow strip carries what you act on. The picture below says which way
@@ -131,12 +151,24 @@ static void drawHeader(Adafruit_GFX &g, const Guidance &d) {
   }
   g.setCursor(0, 0);
   g.print(line);
-  rightAt(g, 0, d.status);
+  // The radio frequency takes the calibration slot: while a pass is being
+  // worked it is the more useful of the two, and the left side is always 13
+  // characters, leaving room for 8. Inverted, so it is not read as part of
+  // the turn instruction beside it.
+  if (d.freqHz > 0) {
+    char mhz[16];
+    formatMHz(mhz, sizeof mhz, d.freqHz, 8);
+    rightAt(g, 0, mhz, true);
+  } else {
+    rightAt(g, 0, d.status);
+  }
 
   snprintf(line, sizeof(line), "AZ%6.1f EL%6.1f", (double)d.az, (double)d.el);
-  g.setCursor(0, 8);
+  // Row 9, not 8: the glyphs still end on row 15, the last yellow one, and the
+  // inverted frequency above gets a dark row under it instead of touching.
+  g.setCursor(0, 9);
   g.print(line);
-  if (d.net) rightAt(g, 8, "NET");
+  if (d.net) rightAt(g, 9, "NET");
 }
 
 void drawGuidance(Adafruit_GFX &g, const Guidance &d) {

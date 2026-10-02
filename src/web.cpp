@@ -5,6 +5,7 @@
 #include "calibration.h"
 #include "net.h"
 #include "orientation.h"
+#include "rigctl.h"
 #include "rotctl.h"
 #include "settings.h"
 #include "ui.h"
@@ -117,7 +118,7 @@ function cal(){post('/api/cal','do='+(S.calactive?'finish':'start'))}
 
 function tick(){fetch('/api').then(function(r){return r.json()}).then(function(d){
  S=d;
- t('net',d.state+' '+d.ip+(d.rotctl=='driving'?' · gpredict':''));
+ t('net',d.state+' '+d.ip+(d.rotctl=='driving'?' · gpredict':'')+(d.freq?' · '+(d.freq/1e6).toFixed(4)+' MHz':''));
  t('az',d.fix?d.az.toFixed(1):'--'); t('el',d.fix?d.el.toFixed(1):'--');
  t('taz',d.taz.toFixed(1)); t('tel',d.tel.toFixed(1));
  t('daz',d.fix?(d.daz>0?'right ':'left ')+Math.abs(d.daz).toFixed(1):'--');
@@ -159,7 +160,8 @@ static void sendJson() {
   j += "\",\"ssid\":\""; j += cal.ssid;
   j += "\",\"wifi\":"; j += cal.wifiOn ? 1 : 0;
   j += ",\"rotctl\":\""; j += rotctlDriving() ? "driving" : (rotctlConnected() ? "connected" : "idle");
-  j += "\",\"fix\":"; j += fix ? 1 : 0;
+  j += "\",\"freq\":"; j += String(rigctlFreq(), 0);
+  j += ",\"fix\":"; j += fix ? 1 : 0;
   if (fix) {
     j += ",\"az\":"; j += String(az, 2);
     j += ",\"el\":"; j += String(o.elev, 2);
@@ -221,6 +223,9 @@ static void sendStatusText() {
   r += "target "; r += String(cal.targetAz, 1); r += ' '; r += String(cal.targetEl, 1); r += '\n';
   r += "rotctl "; r += (rotctlConnected() ? "connected" : "idle");
   r += rotctlDriving() ? " driving\n" : "\n";
+  r += "rigctl "; r += (rigctlConnected() ? "connected" : "idle");
+  if (rigctlFreq() > 0) { r += ' '; r += String(rigctlFreq(), 0); }
+  r += '\n';
   r += "uptime "; r += millis() / 1000; r += '\n';
   r += "heap "; r += ESP.getFreeHeap(); r += '\n';
   srv->send(200, "text/plain", r);

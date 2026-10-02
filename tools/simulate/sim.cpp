@@ -42,6 +42,15 @@ int main() {
   Guidance g2{true, 0.0f, -90.0f, 180.0f, 90.0f, 180.0f, 180.0f, "ok 2%", false};
   render("extremes: straight down to straight up", g2);
 
+  Guidance r{true, 200.0f, 40.0f, 110.0f, 12.0f, -90.0f, -28.0f, "BAD 4%", true, 145812340.0};
+  render("gpredict radio: frequency replaces the cal status", r);
+
+  Guidance z{true, 200.0f, 40.0f, 110.0f, 12.0f, -90.0f, -28.0f, "BAD 4%", true, 145890000.0};
+  render("gpredict radio, round frequency", z);
+
+  Guidance q{true, 145.0f, 28.5f, 145.0f, 28.5f, 0.1f, -0.2f, "ok 2%", true, 10489550000.0};
+  render("on target, 10 GHz frequency", q);
+
   Guidance e{false, 0, 0, 0, 0, 0, 0, "NO CAL", false};
   render("no fix", e);
   return 0;
