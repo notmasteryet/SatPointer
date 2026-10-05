@@ -118,6 +118,7 @@ Source layout:
 | `display.*` | SSD1306 rendering |
 | `input.*` | encoder and button |
 | `commands.*` | serial commands and the data line |
+| `rotator.*` | declares the SatNOGS rotator's position from this aim |
 | `settings.*` | the persisted `Settings` struct |
 
 `upload_port` is pinned in `platformio.ini`. For a 0.91" panel change
@@ -165,11 +166,56 @@ Hold the button to open it, turn to choose, press to activate, hold to go back.
 
 | Item | Does |
 |---|---|
-| WiFi | shows link state and address; press toggles the radio |
-| Calibrate | starts magnetometer calibration — press to save, hold to abandon. The verdict (OK / POOR / FAILED, with the score) shows on screen afterwards. |
+| Rotor north | tells the SatNOGS rotator where its antenna points — see below |
 | Mount | pick the beam mount; turn to preview, press to apply, hold to cancel |
+| WiFi | shows link state and address; press toggles the radio |
+| Screen | graphic or numbers |
 | Clear target | zeroes both targets |
+| Calibrate | starts magnetometer calibration — press to save, hold to abandon. The verdict (OK / POOR / FAILED, with the score) shows on screen afterwards. |
 | Exit | back to the guidance screen |
+
+Five items fit on the panel; the list scrolls to follow the selection.
+
+### Rotor north
+
+Clamp the device to the antenna boom on the SatNOGS rotator, open **Rotor
+north**, and press. It connects to `satnogs-rotor1:23` (esp-link's serial
+bridge, `ROTATOR_HOST` in `config.h`) and does what `sattrack.py deploy` does,
+with the pointer's reading standing in for sighting the sun:
+
+```
+M114                       what the rotator thought before, shown as "was"
+M503, M564 E               which way its E axis is set; flipped if it does not match
+G92 A<az> E<-el>           this is where the antenna points
+M208 S1 A<az-360> ...      travel re-centred a turn either way
+M208 S0 A<az+360> ...
+M500                       saved
+M114                       confirmed: Ref:11 and A took
+```
+
+**Turn the dial to pick the antenna side, CW or CCW.** The antenna can be
+bolted to either end of the elevation shaft, and on the far end it faces the
+other way, so the same rotation lowers it instead of raising it. CW is the
+side the rotator was built for (`M562 E1`). CCW makes Rotor north send
+`M564 E`, which inverts the rotator's E axis and is saved by the `M500`, but
+only when the rotator is set for the other side. Negative E then means up on
+either side, so `tracker/config.json`'s `el_sign` stays −1. The 180° of
+azimuth that come with the far side need nothing, because the declaration is
+the pointer's reading of where the antenna really points.
+
+Nothing moves, and the motors stay as they were. Elevation is declared too,
+since one aim pins both and the accelerometer's elevation is the reading to
+trust. `E` is sky elevation times −1, the build's `el_sign`.
+
+- The declared A is the bearing's equivalent nearest the rotator's current
+  count (−21, not 339), so "go north" afterwards is the short way round.
+- **Have the cable wrap neutral first.** The travel fence is a wrap budget
+  around the declared position, as `deploy` treats it.
+- **Don't run `sattrack.py` at the same time.** esp-link sends every reply to
+  every connection.
+- Azimuth is only as good as the calibration, so the screen shows the grade
+  before you press. Calibrate with the device on the boom, since the antenna's
+  metal moves with it.
 
 The mount picker previews without committing, so turning past the one you want
 costs nothing. Applying a mount resets the sensor filter and warns that the

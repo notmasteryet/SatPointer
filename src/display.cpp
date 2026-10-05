@@ -9,6 +9,7 @@
 #include "guidance.h"
 #include "orientation.h"
 #include "rigctl.h"
+#include "rotator.h"
 #include "rotctl.h"
 #include "net.h"
 #include "sensors.h"
@@ -132,13 +133,20 @@ static void drawOta() {
   oled.fillRect(0, 44, netOtaPercent() * 128 / 100, 10, SSD1306_WHITE);
 }
 
+// Five rows fit the cyan band, so the list scrolls to keep the selection on
+// screen, and the hint lives in the header rather than taking a row.
+static const uint8_t MENU_ROWS = 5;
+
 static void drawMenu() {
   oled.setTextSize(1);
   oled.setCursor(0, 0);
-  oled.println(F("MENU"));
+  oled.print(F("MENU"));
+  oled.setCursor(74, 0);
+  oled.print(F("hold=back"));
   oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
-  for (uint8_t i = 0; i < uiMenuCount(); i++) {
-    oled.setCursor(0, 16 + i * 10);
+  uint8_t top = uiMenuIndex() < MENU_ROWS ? 0 : uiMenuIndex() - (MENU_ROWS - 1);
+  for (uint8_t i = top; i < uiMenuCount() && i < top + MENU_ROWS; i++) {
+    oled.setCursor(0, 16 + (i - top) * 10);
     oled.print(i == uiMenuIndex() ? '>' : ' ');
     oled.print(' ');
     oled.print(uiMenuLabel(i));
@@ -146,12 +154,75 @@ static void drawMenu() {
     // "what is it set to now" without another press.
     const char *v = uiMenuValue(i);
     if (v) {
-      oled.setCursor(84, 16 + i * 10);
+      oled.setCursor(84, 16 + (i - top) * 10);
       oled.print(v);
     }
   }
-  oled.setCursor(0, 56);
-  oled.print(F("hold = back"));
+}
+
+static void drawNorth() {
+  oled.setTextSize(1);
+  oled.setCursor(0, 0);
+  oled.println(F("ROTOR NORTH"));
+  oled.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+
+  switch (rotatorState()) {
+    case ROT_IDLE: {
+      Angles o;
+      oled.setCursor(0, 16);
+      if (!orientationAngles(o)) {
+        oled.print(F("no fix"));
+      } else {
+        oled.printf("az %5.1f  el %5.1f", trimmedAz(o), o.elev);
+        oled.setCursor(0, 36);
+        if (fieldSuspect(o.b)) oled.print(F("MAG! field is off"));
+        else if (cal.magCal) oled.printf("cal ok %.0f%%", cal.calSpread);
+        else if (cal.calSpread > 0) oled.printf("cal BAD %.0f%% - az rough", cal.calSpread);
+        else oled.print(F("NO CAL - az untrusted"));
+      }
+      oled.setCursor(0, 26);
+      oled.print(F("cable wrap neutral?"));
+      oled.setCursor(0, 46);
+      // CW is the side the rotator was built and the tracker tuned for
+      // (M562 E1); CCW is the far end of the shaft, which needs M564 E.
+      oled.printf("antenna %s (turn)", uiNorthFlipped() ? "CCW" : "CW");
+      oled.setCursor(0, 56);
+      oled.print(F("press=set hold=back"));
+      break;
+    }
+
+    case ROT_BUSY:
+      oled.setCursor(0, 20);
+      oled.print(rotatorMessage());
+      oled.setCursor(0, 46);
+      oled.print(F(ROTATOR_HOST));
+      break;
+
+    case ROT_DONE:
+      oled.setTextSize(2);
+      oled.setCursor(0, 18);
+      oled.print(F("DONE"));
+      oled.setTextSize(1);
+      oled.setCursor(0, 38);
+      oled.printf("now A%.1f E%.1f", rotatorDeclaredA(), rotatorDeclaredE());
+      oled.setCursor(0, 47);
+      oled.printf("was A%.1f E%.1f%s", rotatorPreviousA(), rotatorPreviousE(),
+                  rotatorWasReferenced() ? "" : "?");
+      oled.setCursor(0, 56);
+      oled.print(rotatorFlippedE() ? F("E flipped, saved") : F("saved, press=ok"));
+      break;
+
+    case ROT_FAILED:
+      oled.setTextSize(2);
+      oled.setCursor(0, 18);
+      oled.print(F("FAILED"));
+      oled.setTextSize(1);
+      oled.setCursor(0, 36);
+      oled.print(rotatorMessage());  // wraps onto a second line if it must
+      oled.setCursor(0, 56);
+      oled.print(F("press=retry hold=back"));
+      break;
+  }
 }
 
 static void drawMountPicker() {
@@ -302,6 +373,8 @@ void displayDraw(bool sensorOk) {
     drawMountPicker();
   } else if (uiMode() == UI_WIFI) {
     drawWifi();
+  } else if (uiMode() == UI_NORTH) {
+    drawNorth();
   } else if (uiGraphicScreen()) {
     drawGuidanceScreen();
   } else {

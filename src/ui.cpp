@@ -5,24 +5,27 @@
 #include "input.h"
 #include "net.h"
 #include "orientation.h"
+#include "rotator.h"
 #include "settings.h"
 
 enum MenuItem : uint8_t {
-  MENU_CALIBRATE,
   MENU_MOUNT,
   MENU_WIFI,
   MENU_SCREEN,
   MENU_CLEAR_TARGET,
+  MENU_CALIBRATE,
+  MENU_NORTH,
   MENU_EXIT,
   MENU_COUNT,
 };
 
 static const char *const MENU_LABELS[MENU_COUNT] = {
-  "Calibrate",
   "Mount",
   "WiFi",
   "Screen",
   "Clear target",
+  "Calibrate",
+  "Rotor north",
   "Exit",
 };
 
@@ -31,6 +34,9 @@ static bool editEl = false;
 static uint8_t menuIndex = 0;
 static uint8_t mountPreview = 0;
 static bool graphicScreen = true;
+// Antenna side for Rotor north: false = CW (as built), true = CCW. Not
+// persisted: the rotator stores its own E direction.
+static bool northFlipped = false;
 
 static bool targetDirty = false;
 static unsigned long targetTouched = 0;
@@ -49,6 +55,7 @@ const char *uiMenuValue(uint8_t i) {
   return nullptr;
 }
 uint8_t uiMountPreview() { return mountPreview; }
+bool uiNorthFlipped() { return northFlipped; }
 
 // The target is written to EEPROM only once the dial has been still for a
 // while - otherwise a single sweep of the encoder would burn a flash write per
@@ -78,6 +85,10 @@ void uiSetMount(uint8_t m) {
 
 static void runMenuItem() {
   switch (menuIndex) {
+    case MENU_NORTH:
+      rotatorDismiss();
+      mode = UI_NORTH;
+      break;
     case MENU_CALIBRATE:
       calStart();
       mode = UI_MAIN;
@@ -171,6 +182,33 @@ void uiUpdate() {
     case UI_WIFI:
       if (ev == InputEvent::ShortPress) netSetEnabled(!cal.wifiOn);
       else if (ev == InputEvent::LongPress) mode = UI_MENU;
+      break;
+
+    case UI_NORTH:
+      switch (rotatorState()) {
+        case ROT_BUSY:
+          break;  // a few hundred ms; nothing to cancel halfway through
+        case ROT_DONE:
+          if (ev != InputEvent::None) {
+            rotatorDismiss();
+            mode = UI_MAIN;
+          }
+          break;
+        case ROT_FAILED:
+          if (ev == InputEvent::ShortPress) rotatorDismiss();  // back to retry
+          else if (ev == InputEvent::LongPress) mode = UI_MENU;
+          break;
+        case ROT_IDLE: {
+          Angles o;
+          if (detents & 1) northFlipped = !northFlipped;
+          if (ev == InputEvent::ShortPress && orientationAngles(o)) {
+            rotatorDeclare(trimmedAz(o), o.elev, northFlipped);
+          } else if (ev == InputEvent::LongPress) {
+            mode = UI_MENU;
+          }
+          break;
+        }
+      }
       break;
   }
 

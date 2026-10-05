@@ -31,3 +31,12 @@ const unsigned long DRAW_MS = 200;   // 5 Hz, a full SSD1306 frame is not cheap
 const unsigned long TARGET_SAVE_MS = 2000;
 
 const float QMC_LSB_PER_UT = 30.0;  // +-8 G range: 3000 LSB/G
+
+// ---- SatNOGS rotator (rotator_gcode behind esp-link's TCP serial bridge) ----
+// Port 23, not 2323: esp-link resets the AVR on every 2323 connect, which
+// drops the rotator's reference and disarms it.
+#define ROTATOR_HOST "satnogs-rotor1"
+const uint16_t ROTATOR_PORT = 23;
+const float ROTATOR_EL_SIGN = -1.0;  // negative E is up on this build, as in tracker/
+const float ROTATOR_WRAP_DEG = 360.0;  // travel either side of the declared position
+const unsigned long ROTATOR_REPLY_MS = 5000;

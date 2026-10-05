@@ -17,6 +17,7 @@
 #include "ui.h"
 #include "orientation.h"
 #include "rigctl.h"
+#include "rotator.h"
 #include "rotctl.h"
 #include "sensors.h"
 #include "settings.h"
@@ -49,6 +50,7 @@ void loop() {
   netUpdate();
   rotctlUpdate();
   rigctlUpdate();
+  rotatorUpdate();
   commandsUpdate();
   uiUpdate();
 

@@ -4,6 +4,8 @@
 //   MENU  turn = choose, press = activate, hold = back
 //   MOUNT turn = preview a mount, press = apply, hold = cancel
 //   WIFI  press = toggle the radio, hold = back
+//   NORTH turn = antenna CW or CCW, press = declare the rotator's
+//         position from this aim, hold = back
 //
 // Calibration is not a mode here: it is whatever calActive() says, so the
 // serial 'c' command and the menu entry lead to the same place.
@@ -11,7 +13,7 @@
 
 #include <Arduino.h>
 
-enum UiMode : uint8_t { UI_MAIN, UI_MENU, UI_MOUNT, UI_WIFI };
+enum UiMode : uint8_t { UI_MAIN, UI_MENU, UI_MOUNT, UI_WIFI, UI_NORTH };
 
 void uiUpdate();
 
@@ -22,6 +24,7 @@ uint8_t uiMenuCount();
 const char *uiMenuLabel(uint8_t i);
 const char *uiMenuValue(uint8_t i);  // value shown beside the item, or nullptr
 uint8_t uiMountPreview();  // mount highlighted in UI_MOUNT, not yet applied
+bool uiNorthFlipped();     // antenna side picked in UI_NORTH
 
 // Applies a mount and does the bookkeeping that must go with it. Shared with
 // the serial 'm' command so there is only one place that gets it right.
